@@ -128,6 +128,7 @@ dept varchar(4) NOT NULL,
 PRIMARY KEY(batch,dept)
 );
 
+
 CREATE TABLE course_offering(
 courseid char(5) NOT NULL,
 year INTEGER NOT NULL,
