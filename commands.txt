@@ -115,6 +115,7 @@ PRIMARY KEY(slot_type)
 CREATE TABLE batch(
 batch INTEGER NOT NULL,
 dept varchar(4) NOT NULL,
+ins_id INTEGER,
 PRIMARY KEY(batch,dept)
 );
 
