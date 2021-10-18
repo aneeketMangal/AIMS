@@ -1,5 +1,7 @@
 CREATE DATABASE aims;
 
+\c aims;
+
 CREATE ROLE deanoffice
 LOGIN
 PASSWORD 'deanoffice';
@@ -109,18 +111,6 @@ slot_type INTEGER NOT NULL,
 PRIMARY KEY(slot_type)
 );
 
-CREATE TABLE timetable(
-slot_type INTEGER NOT NULL,
-day varchar(9) NOT NULL,	
-starttime time(0) without time zone NOT NULL,
-endtime time(0) without time zone NOT NULL,
-PRIMARY KEY(slot_type,day,starttime),
-FOREIGN KEY(slot_type) REFERENCES timeslots(slot_type)
-);
-
-GRANT SELECT
-ON timetable
-TO deanoffice,faculty,student;
 
 CREATE TABLE batch(
 batch INTEGER NOT NULL,
@@ -130,6 +120,7 @@ PRIMARY KEY(batch,dept)
 
 
 CREATE TABLE course_offering(
+id SERIAL,
 courseid char(5) NOT NULL,
 year INTEGER NOT NULL,
 semester INTEGER NOT NULL,
@@ -138,7 +129,7 @@ insid INTEGER NOT NULL,
 slot INTEGER NOT NULL,
 classroom varchar(5),
 CGPA float8,
-PRIMARY KEY(courseid,year,semester,sectionid),
+PRIMARY KEY(id),
 FOREIGN KEY(courseid) REFERENCES courses(courseid),
 FOREIGN KEY(insid) REFERENCES instructor(id),
 FOREIGN KEY(slot) REFERENCES timeslots(slot_type)
