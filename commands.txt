@@ -1,44 +1,3 @@
-CREATE DATABASE aims;
-
-\c aims;
-
-CREATE ROLE deanoffice
-LOGIN
-PASSWORD 'deanoffice';
-
-CREATE ROLE faculty;
-CREATE ROLE student;
-
-CREATE ROLE tvkalyan
-WITH IN GROUP faculty
-LOGIN
-PASSWORD 'tvkalyan';
-
-CREATE ROLE bsodhi
-WITH IN GROUP faculty
-LOGIN
-PASSWORD 'bsodhi';
-
-CREATE ROLE puneet
-WITH IN GROUP faculty
-LOGIN
-PASSWORD 'puneet';
-
-CREATE ROLE _2019csb1124
-WITH IN GROUP student
-LOGIN
-PASSWORD '2019csb1124';
-
-CREATE ROLE _2019csb1125
-WITH IN GROUP student
-LOGIN
-PASSWORD '2019csb1125';
-
-CREATE ROLE _2019csb1071
-WITH IN GROUP student
-LOGIN
-PASSWORD '2019csb1071';
-
 CREATE TABLE courses(
     courseId char(5) NOT NULL PRIMARY KEY,
     Title VARCHAR(50) NOT NULL,
@@ -50,17 +9,12 @@ CREATE TABLE courses(
 );
 
 GRANT ALL
-ON Courses
+ON courses
 TO deanoffice;
 
 GRANT SELECT 
-ON Courses
-TO faculty;
-
-GRANT SELECT 
-ON Courses
-TO student;
-
+ON courses
+TO faculty, student;
 
 CREATE TABLE prereq(
     courseId char(5) NOT NULL,
@@ -76,11 +30,7 @@ TO deanoffice;
 
 GRANT SELECT 
 ON prereq
-TO faculty;
-
-GRANT SELECT 
-ON prereq
-TO student;
+TO faculty, student;
 
 CREATE TABLE students(
     id char(11) NOT NULL,
@@ -94,7 +44,6 @@ GRANT SELECT
 ON students
 TO deanoffice,faculty;
 
-
 CREATE TABLE instructor(
     id INTEGER NOT NULL,
     name varchar(40) NOT NULL,
@@ -102,15 +51,26 @@ CREATE TABLE instructor(
     PRIMARY KEY(id)
 );
 
-GRANT SELECT 
+GRANT ALL 
 ON instructor
 TO deanoffice;
+
+GRANT SELECT
+ON instructor
+TO students, faculty;
 
 CREATE TABLE timeslots(
     slot_type char(6) NOT NULL,
     PRIMARY KEY(slot_type)
 );
 
+GRANT ALL
+ON timeslots
+TO deanoffice;
+
+GRANT SELECT 
+ON prereq
+TO faculty, student;
 
 CREATE TABLE batch(
     batch INTEGER NOT NULL,
@@ -120,6 +80,13 @@ CREATE TABLE batch(
     FOREIGN KEY(ins_id) REFERENCES instructor(id)
 );
 
+GRANT ALL
+ON timeslots
+TO deanoffice;
+
+GRANT SELECT 
+ON prereq
+TO faculty, student;
 
 CREATE TABLE course_offering(
     id SERIAL,
@@ -137,6 +104,14 @@ CREATE TABLE course_offering(
     FOREIGN KEY(slot) REFERENCES timeslots(slot_type)
 );
 
+GRANT ALL
+ON timeslots
+TO deanoffice;
+
+GRANT SELECT 
+ON prereq
+TO faculty, student;
+
 
 CREATE TABLE enrol(
     student_id char(11) NOT NULL,
@@ -146,16 +121,32 @@ CREATE TABLE enrol(
     FOREIGN KEY(course_id) REFERENCES course_offering(course_id)
 );
 
+GRANT ALL
+ON timeslots
+TO deanoffice;
+
+GRANT SELECT 
+ON prereq
+TO faculty, student;
+
 CREATE TABLE curriculum(
     course_type varchar(2) NOT NULL,
     course_id char(5) NOT NULL,
     batch INTEGER NOT NULL,
     dept varchar(4) NOT NULL,
-    PRIMARY KEY (),
+    PRIMARY KEY (batch, dept, course_id),
     FOREIGN KEY (course_id) REFERENCES courses(courseId), 
     FOREIGN KEY (batch) REFERENCES batch(batch), 
     FOREIGN KEY (dept) REFERENCES batch(dept)
 );
+
+GRANT ALL
+ON timeslots
+TO deanoffice;
+
+GRANT SELECT 
+ON prereq
+TO faculty, student;
 
 CREATE TABLE constraint(
     id INTEGER NOT NULL,
@@ -166,7 +157,6 @@ CREATE TABLE constraint(
 CREATE TABLE teaches(
     ins_id INTEGER NOT NULL,
     offering_id INTEGER NOT NULL, 
-    /*serial equivalent to int*/
     PRIMARY KEY (ins_id, offering_id)
     FOREIGN KEY(ins_id) REFERENCES instructor(id),
     FOREIGN key(offering_id) REFERENCES course_offering(id),
