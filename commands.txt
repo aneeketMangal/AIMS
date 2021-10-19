@@ -64,9 +64,10 @@ CREATE TABLE timeslots(
     PRIMARY KEY(slot_type)
 );
 
-GRANT ALL
+GRANT SELECT
 ON timeslots
-TO deanoffice;
+TO faculty,student,deanoffice;
+
 
 GRANT SELECT 
 ON prereq
@@ -80,9 +81,7 @@ CREATE TABLE batch(
     FOREIGN KEY(ins_id) REFERENCES instructor(id)
 );
 
-GRANT ALL
-ON timeslots
-TO deanoffice;
+
 
 GRANT SELECT 
 ON prereq
@@ -104,9 +103,7 @@ CREATE TABLE course_offering(
     FOREIGN KEY(slot) REFERENCES timeslots(slot_type)
 );
 
-GRANT ALL
-ON timeslots
-TO deanoffice;
+
 
 GRANT SELECT 
 ON prereq
@@ -121,9 +118,7 @@ CREATE TABLE enrol(
     FOREIGN KEY(course_id) REFERENCES course_offering(course_id)
 );
 
-GRANT ALL
-ON timeslots
-TO deanoffice;
+
 
 GRANT SELECT 
 ON prereq
@@ -140,9 +135,7 @@ CREATE TABLE curriculum(
     FOREIGN KEY (dept) REFERENCES batch(dept)
 );
 
-GRANT ALL
-ON timeslots
-TO deanoffice;
+
 
 GRANT SELECT 
 ON prereq
