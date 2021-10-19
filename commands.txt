@@ -39,14 +39,14 @@ WITH IN GROUP student
 LOGIN
 PASSWORD '2019csb1071';
 
-CREATE TABLE Courses(
-courseId char(5) NOT NULL PRIMARY KEY,
-Title VARCHAR(50) NOT NULL,
-L float8 NOT NULL,
-T float8 NOT NULL,
-P float8 NOT NULL,
-S float8 NOT NULL,
-C float8 NOT NULL
+CREATE TABLE courses(
+    courseId char(5) NOT NULL PRIMARY KEY,
+    Title VARCHAR(50) NOT NULL,
+    L float8 NOT NULL,
+    T float8 NOT NULL,
+    P float8 NOT NULL,
+    S float8 NOT NULL,
+    C float8 NOT NULL
 );
 
 GRANT ALL
@@ -63,11 +63,11 @@ TO student;
 
 
 CREATE TABLE prereq(
-courseId char(5) NOT NULL,
-prereq_Id char(5) NOT NULL,
-PRIMARY KEY(courseId,prereq_Id),
-FOREIGN KEY(courseId) REFERENCES courses(courseId),
-FOREIGN KEY(prereq_Id) REFERENCES courses(courseId)
+    courseId char(5) NOT NULL,
+    prereq_Id char(5) NOT NULL,
+    PRIMARY KEY(courseId,prereq_Id),
+    FOREIGN KEY(courseId) REFERENCES courses(courseId),
+    FOREIGN KEY(prereq_Id) REFERENCES courses(courseId)
 );
 
 GRANT ALL
@@ -83,11 +83,11 @@ ON prereq
 TO student;
 
 CREATE TABLE students(
-id char(11) NOT NULL,
-name varchar(40) NOT NULL,
-dept varchar(4) NOT NULL,
-batch INTEGER NOT NULL,
-PRIMARY KEY(id)
+    id char(11) NOT NULL,
+    name varchar(40) NOT NULL,
+    dept varchar(4) NOT NULL,
+    batch INTEGER NOT NULL,
+    PRIMARY KEY(id)
 );
 
 GRANT SELECT 
@@ -96,10 +96,10 @@ TO deanoffice,faculty;
 
 
 CREATE TABLE instructor(
-id INTEGER NOT NULL,
-name varchar(40) NOT NULL,
-dept varchar(4) NOT NULL,
-PRIMARY KEY(id)
+    id INTEGER NOT NULL,
+    name varchar(40) NOT NULL,
+    dept varchar(4) NOT NULL,
+    PRIMARY KEY(id)
 );
 
 GRANT SELECT 
@@ -107,35 +107,68 @@ ON instructor
 TO deanoffice;
 
 CREATE TABLE timeslots(
-slot_type INTEGER NOT NULL,
-PRIMARY KEY(slot_type)
+    slot_type char(6) NOT NULL,
+    PRIMARY KEY(slot_type)
 );
 
 
 CREATE TABLE batch(
-batch INTEGER NOT NULL,
-dept varchar(4) NOT NULL,
-ins_id INTEGER,
-PRIMARY KEY(batch,dept)
+    batch INTEGER NOT NULL,
+    dept varchar(4) NOT NULL,
+    ins_id INTEGER,
+    PRIMARY KEY(batch,dept),
+    FOREIGN KEY(ins_id) REFERENCES instructor(id)
 );
 
 
 CREATE TABLE course_offering(
-id SERIAL,
-courseid char(5) NOT NULL,
-year INTEGER NOT NULL,
-semester INTEGER NOT NULL,
-sectionid INTEGER NOT NULL,
-insid INTEGER NOT NULL,
-slot INTEGER NOT NULL,
-classroom varchar(5),
-CGPA float8,
-PRIMARY KEY(id),
-FOREIGN KEY(courseid) REFERENCES courses(courseid),
-FOREIGN KEY(insid) REFERENCES instructor(id),
-FOREIGN KEY(slot) REFERENCES timeslots(slot_type)
+    id SERIAL,
+    course_id char(5) NOT NULL,
+    year INTEGER NOT NULL,
+    semester INTEGER NOT NULL,
+    section_id INTEGER NOT NULL,
+    insid INTEGER NOT NULL,
+    slot INTEGER NOT NULL,
+    classroom varchar(5),
+    CGPA float8,
+    PRIMARY KEY(id),
+    FOREIGN KEY(courseid) REFERENCES courses(courseid),
+    FOREIGN KEY(insid) REFERENCES instructor(id),
+    FOREIGN KEY(slot) REFERENCES timeslots(slot_type)
 );
 
 
+CREATE TABLE enrol(
+    student_id char(11) NOT NULL,
+    course_id char(5) NOT NULL,
+    PRIMARY KEY (student_id, course_id),
+    FOREIGN KEY(student_id) REFERENCES students(id),
+    FOREIGN KEY(course_id) REFERENCES course_offering(course_id)
+);
 
+CREATE TABLE curriculum(
+    course_type varchar(2) NOT NULL,
+    course_id char(5) NOT NULL,
+    batch INTEGER NOT NULL,
+    dept varchar(4) NOT NULL,
+    PRIMARY KEY (),
+    FOREIGN KEY (course_id) REFERENCES courses(courseId), 
+    FOREIGN KEY (batch) REFERENCES batch(batch), 
+    FOREIGN KEY (dept) REFERENCES batch(dept)
+);
+
+CREATE TABLE constraint(
+    id INTEGER NOT NULL,
+    batch INTEGER NOT NULL,
+    PRIMARY KEY (batch, id)
+);
+
+CREATE TABLE teaches(
+    ins_id INTEGER NOT NULL,
+    offering_id INTEGER NOT NULL, 
+    /*serial equivalent to int*/
+    PRIMARY KEY (ins_id, offering_id)
+    FOREIGN KEY(ins_id) REFERENCES instructor(id),
+    FOREIGN key(offering_id) REFERENCES course_offering(id),
+);
 
