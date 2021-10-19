@@ -69,9 +69,7 @@ ON timeslots
 TO faculty,student,deanoffice;
 
 
-GRANT SELECT 
-ON prereq
-TO faculty, student;
+
 
 CREATE TABLE batch(
     batch INTEGER NOT NULL,
@@ -83,9 +81,7 @@ CREATE TABLE batch(
 
 
 
-GRANT SELECT 
-ON prereq
-TO faculty, student;
+
 
 CREATE TABLE course_offering(
     id SERIAL,
@@ -103,13 +99,6 @@ CREATE TABLE course_offering(
     FOREIGN KEY(slot) REFERENCES timeslots(slot_type)
 );
 
-
-
-GRANT SELECT 
-ON prereq
-TO faculty, student;
-
-
 CREATE TABLE enrol(
     student_id char(11) NOT NULL,
     course_id char(5) NOT NULL,
@@ -117,12 +106,6 @@ CREATE TABLE enrol(
     FOREIGN KEY(student_id) REFERENCES students(id),
     FOREIGN KEY(course_id) REFERENCES course_offering(course_id)
 );
-
-
-
-GRANT SELECT 
-ON prereq
-TO faculty, student;
 
 CREATE TABLE curriculum(
     course_type varchar(2) NOT NULL,
@@ -135,11 +118,6 @@ CREATE TABLE curriculum(
     FOREIGN KEY (dept) REFERENCES batch(dept)
 );
 
-
-
-GRANT SELECT 
-ON prereq
-TO faculty, student;
 
 CREATE TABLE constraint(
     id INTEGER NOT NULL,
