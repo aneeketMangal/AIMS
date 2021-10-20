@@ -71,13 +71,13 @@ TO faculty,student,deanoffice;
 
 
 
-CREATE TABLE batch(
-    batch INTEGER NOT NULL,
-    dept varchar(4) NOT NULL,
-    ins_id INTEGER,
-    PRIMARY KEY(batch,dept),
-    FOREIGN KEY(ins_id) REFERENCES instructor(id)
+CREATE TABLE batches(
+    batch char(7) NOT NULL,
+    adv_id INTEGER,
+    PRIMARY KEY(batch),
+    FOREIGN KEY(adv_id) REFERENCES instructor(id)
 );
+
 
 
 
@@ -88,7 +88,6 @@ CREATE TABLE course_offering(
     course_id char(5) NOT NULL,
     year INTEGER NOT NULL,
     semester INTEGER NOT NULL,
-    section_id INTEGER NOT NULL,
     insid INTEGER NOT NULL,
     slot INTEGER NOT NULL,
     classroom varchar(5),
@@ -119,7 +118,7 @@ CREATE TABLE curriculum(
 );
 
 
-CREATE TABLE constraint(
+CREATE TABLE batch_constraint(
     id INTEGER NOT NULL,
     batch INTEGER NOT NULL,
     PRIMARY KEY (batch, id)
