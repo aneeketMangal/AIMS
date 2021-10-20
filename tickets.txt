@@ -1,0 +1,66 @@
+--Create a table of tickets for Dean Academics (and grant access only to dean)
+--Write a trigger, whenever a new entry is made in batches table, a table of tickets is created for the batch advisor
+--For the batch advisor ticket table, "GRANT --- ON --- TO <batch advisor>"
+--i.e. Access should be granted only to batch advisor rather than to faculty
+--Similarly, a table can be created/updated for each student whenever he/she raises a ticket (which shows status)
+
+--Constraints to be checked can be that the course must be offered
+
+CREATE TABLE dean_tickets(
+    id INTEGER NOT NULL,
+    student_id char(11) NOT NULL,
+    course_id char(5) NOT NULL,
+    semester INTEGER NOT NULL,
+    year INTEGER NOT NULL,
+    PRIMARY KEY(id),
+    FOREIGN KEY student_id REFERENCES students(id),
+    FOREIGN KEY course_id REFERENCES courses(courseId)
+);
+
+GRANT ALL
+ON dean_tickets
+TO deanoffice;
+
+CREATE OR REPLACE PROCEDURE create_advisor_ticket_table()
+LANGUAGE plpgsql
+AS $$
+declare
+    ins_id integer;
+    table_name text;
+    create_table_command text;
+    grant_access_command text;
+begin
+    ins_id := NEW.adv_id;
+
+    table_name := NEW.batch || '_tickets';
+    create_table_command := 'CREATE TABLE ' || table_name || ' (';
+    create_table_command := create_table_command || ' id INTEGER NOT NULL,';
+    create_table_command := create_table_command || ' student_id char(11) NOT NULL,';
+    create_table_command := create_table_command || ' course_id char(5) NOT NULL,';
+    create_table_command := create_table_command || ' semester INTEGER NOT NULL,';
+    create_table_command := create_table_command || ' year INTEGER NOT NULL,';
+    create_table_command := create_table_command || ' PRIMARY KEY(id),';
+    create_table_command := create_table_command || ' FOREIGN KEY student_id REFERENCES students(id),';
+    create_table_command := create_table_command || ' FOREIGN KEY course_id REFERENCES courses(courseId));';
+    EXECUTE create_table_command;
+
+    grant_access_command := 'GRANT ALL ON ' || table_name ||' TO _' || ins_id || ';';
+    EXECUTE grant_access_command;
+
+    --EXECUTE 'CREATE TABLE % (
+    --    id INTEGER NOT NULL,
+    --    student_id char(11) NOT NULL,
+    --    course_id char(5) NOT NULL,
+    --    semester INTEGER NOT NULL,
+    --    year INTEGER NOT NULL,
+    --    PRIMARY KEY(id),
+    --    FOREIGN KEY student_id REFERENCES students(id),
+    --    FOREIGN KEY course_id REFERENCES courses(courseId)
+    --);', table_name;
+end;$$;
+
+CREATE TRIGGER advisor_ticket_table
+BEFORE INSERT
+ON batches
+FOR EACH ROW
+EXECUTE PROCEDURE create_advisor_ticket_table();
