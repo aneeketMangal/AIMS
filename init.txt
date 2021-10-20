@@ -9,17 +9,19 @@ PASSWORD 'deanoffice';
 CREATE ROLE faculty;
 CREATE ROLE student;
 
-CREATE ROLE tvkalyan
+--INSTRUCTOR USER NAME MUST BE '_' + INS_ID (HIS OR HER id), RATHER THAN THEIR NAME (eg, if puneet has id = 34, username = _34)
+
+CREATE ROLE _1
 WITH IN GROUP faculty
 LOGIN
 PASSWORD 'tvkalyan';
 
-CREATE ROLE bsodhi
+CREATE ROLE _2
 WITH IN GROUP faculty
 LOGIN
 PASSWORD 'bsodhi';
 
-CREATE ROLE puneet
+CREATE ROLE _3
 WITH IN GROUP faculty
 LOGIN
 PASSWORD 'puneet';
