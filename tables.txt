@@ -78,11 +78,6 @@ CREATE TABLE batches(
     FOREIGN KEY(adv_id) REFERENCES instructor(id)
 );
 
-
-
-
-
-
 CREATE TABLE course_offering(
     id SERIAL,
     course_id char(5) NOT NULL,
@@ -124,11 +119,4 @@ CREATE TABLE batch_constraint(
     PRIMARY KEY (batch, id)
 );
 
-CREATE TABLE teaches(
-    ins_id INTEGER NOT NULL,
-    offering_id INTEGER NOT NULL, 
-    PRIMARY KEY (ins_id, offering_id)
-    FOREIGN KEY(ins_id) REFERENCES instructor(id),
-    FOREIGN key(offering_id) REFERENCES course_offering(id),
-);
 
