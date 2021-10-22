@@ -95,23 +95,11 @@ CREATE TABLE course_offering(
 
 CREATE TABLE enrol(
     student_id char(11) NOT NULL,
-    course_id char(5) NOT NULL,
+    offering_id INTEGER NOT NULL,
     PRIMARY KEY (student_id, course_id),
     FOREIGN KEY(student_id) REFERENCES students(id),
-    FOREIGN KEY(course_id) REFERENCES course_offering(course_id)
+    FOREIGN KEY(offering_id) REFERENCES course_offering(id)
 );
-
-CREATE TABLE curriculum(
-    course_type varchar(2) NOT NULL,
-    course_id char(5) NOT NULL,
-    batch INTEGER NOT NULL,
-    dept varchar(4) NOT NULL,
-    PRIMARY KEY (batch, dept, course_id),
-    FOREIGN KEY (course_id) REFERENCES courses(course_id), 
-    FOREIGN KEY (batch) REFERENCES batch(batch), 
-    FOREIGN KEY (dept) REFERENCES batch(dept)
-);
-
 
 CREATE TABLE batch_constraint(
     id INTEGER NOT NULL,
