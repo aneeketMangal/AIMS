@@ -1,6 +1,7 @@
 --key points to note
--- 1. Course must not be offered by any other instructor (for same sem/year)
+-- 1. Course can now be offered by any other instructor (for same sem/year)
 -- 2. Course must exist.
+-- 3. Grades are character grades (A, A-, B, B-)
 
 --On each entry in course_offering, 2 tables will be created
 -- 1. Tickets corresponding to that course offering (security definer).
@@ -16,19 +17,22 @@ declare
     create_table_command text;
     grant_permission_command text;
 begin
-    table_name := NEW.course_id || '_' || NEW.year || '_' || NEW.semester || '_grades';
+    table_name := concat(NEW.id,  '_grades');
     create_table_command := 'CREATE TABLE ' || table_name || ' (';
     create_table_command := create_table_command || ' student_id char(11) NOT NULL,';
-    create_table_command := create_table_command || ' grade char(1) NOT NULL,';
-    create_table_command := create_table_command || ' FOREIGN KEY student_id REFERENCES students(id));';
+    create_table_command := create_table_command || ' grade char(2) NOT NULL,';
+    create_table_command := create_table_command || ' FOREIGN KEY(student_id) REFERENCES students(id));';
+    
     EXECUTE create_table_command;
 
     grant_permission_command := 'GRANT ALL ON ' || table_name || ' TO deanoffice;';
+
     EXECUTE grant_permission_command;
-end;$$;
+end;
+$$;
 
 CREATE TRIGGER grade_table
-BEFORE INSERT
+AFTER INSERT
 ON course_offering
 FOR EACH ROW
 EXECUTE PROCEDURE create_grade_table();
