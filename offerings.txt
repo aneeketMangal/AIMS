@@ -5,17 +5,18 @@
 
 --On each entry in course_offering, 2 tables will be created
 -- 1. Tickets corresponding to that course offering (security definer).
--- 2. Grades corresponding to that course offering (format: "_id_grades").
+-- 2. Grades corresponding to that course offering (format: "__grades").
 
---grade table creation trigger
+
+--grade table template
 CREATE OR REPLACE FUNCTION create_grade_table()
 RETURNS trigger
 AS $_$
-declare
+DECLARE
     table_name text;
     create_table_command text;
     grant_permission_command text;
-begin
+BEGIN
     table_name := concat('_', NEW.id,  '_grades');
     create_table_command := 'CREATE TABLE ' || table_name || ' (';
     create_table_command := create_table_command || ' student_id char(11) NOT NULL,';
@@ -28,7 +29,7 @@ begin
 
     EXECUTE grant_permission_command;
     return null;
-end
+END
 $_$
 LANGUAGE plpgsql
 SECURITY DEFINER;
@@ -40,40 +41,6 @@ ON course_offering
 FOR EACH ROW
 EXECUTE FUNCTION create_grade_table();
 
---ticket table creation trigger
-CREATE OR REPLACE PROCEDURE create_instructor_ticket_table()
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-declare
-    ins_id integer;
-    table_name text;
-    create_table_command text;
-    grant_access_command text;
-begin
-    ins_id := NEW.insid;
-
-    table_name := NEW.course_id || '_' || NEW.year || '_' || NEW.semester || '_tickets';
-    create_table_command := 'CREATE TABLE ' || table_name || ' (';
-    create_table_command := create_table_command || ' id INTEGER NOT NULL,';
-    create_table_command := create_table_command || ' student_id char(11) NOT NULL,';
-    create_table_command := create_table_command || ' course_id char(5) NOT NULL,';
-    create_table_command := create_table_command || ' semester INTEGER NOT NULL,';
-    create_table_command := create_table_command || ' year INTEGER NOT NULL,';
-    create_table_command := create_table_command || ' PRIMARY KEY(id),';
-    create_table_command := create_table_command || ' FOREIGN KEY student_id REFERENCES students(id),';
-    create_table_command := create_table_command || ' FOREIGN KEY course_id REFERENCES courses(courseId));';
-    EXECUTE create_table_command;
-
-    grant_access_command := 'GRANT ALL ON ' || table_name ||' TO _' || ins_id || ';';
-    EXECUTE grant_access_command;
-end;$$;
-
-CREATE TRIGGER instructor_ticket_table
-BEFORE INSERT
-ON course_offering
-FOR EACH ROW
-EXECUTE PROCEDURE create_instructor_ticket_table();
 
 --constraint update procedure
 CREATE OR REPLACE PROCEDURE update_constraint
