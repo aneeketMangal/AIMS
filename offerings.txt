@@ -72,7 +72,7 @@ GRANT EXECUTE
 ON PROCEDURE update_constraint
 TO faculty;
 
---procedure for offring courses
+--procedure for offering courses
 --batch_list to be provided as '2019csb,2020eeb,2018ceb'
 CREATE OR REPLACE PROCEDURE offer_course
 (
@@ -91,13 +91,19 @@ declare
     ins_id integer;
     offering_id integer;
 begin
-    ins_id := CAST(substr(user, 2) AS INTEGER);
+    -- ins_id := CAST(substr(user, 2) AS INTEGER);
+    ins_id := 1;
 
     --if the course exists
-    if EXISTS(SELECT 1 FROM courses WHERE courses.courseId = course_id) then
+    if EXISTS(SELECT 1 FROM courses WHERE courses.course_id = $1) then
         
-        --if the course is not offered this sem-year
-        if NOT EXISTS(SELECT 1 FROM course_offering C WHERE C.course_id = course_id and C.semester = semester and C.year = year) then
+        -- if time slots of none of the the previous offering by ins_id
+        -- conflicts with current offering's slot 
+        -- insid can offer the course
+        if NOT EXISTS(
+            SELECT 1 FROM course_offering C WHERE 
+            C.insid = ins_id and C.semester = $2 and C.year = $3 and C.slot = $5
+        ) then
             INSERT INTO course_offering(course_id, year, semester, insid, slot, classroom, CGPA)
             VALUES
             (course_id, year, semester, ins_id, slot, classroom, CGPA);
@@ -109,7 +115,11 @@ begin
         
         --if the course is offered this sem-year
         else
-            RAISE EXCEPTION 'Course % already offered.', course_id;
+           -- SELECT C.id into conflict_id
+           -- FROM course_offering C
+           -- WHERE
+           -- C.insid = ins_id and C.semester = semester and C.year = year and C.slot = slot;
+            RAISE EXCEPTION '% offering will have time slot conflict with an existing offering.', course_id;
         END if;
     
     --if the course doesn't exist
@@ -121,3 +131,4 @@ end;$$;
 GRANT EXECUTE
 ON PROCEDURE offer_course
 TO faculty;
+
