@@ -1,0 +1,73 @@
+--FUNCTIONS MUST BE CREATED BY deanoffice
+--Every faculty should be able to calculate student's cgpa
+--SO, FACULTY MUST BE GIVEN SELECT ON STUDENT TRANSCRIPTS
+
+CREATE OR REPLACE FUNCTION grade_to_points
+(
+    grade varchar(2);
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+RETURNS integer
+AS $$
+declare
+    points integer;
+    points_char varchar(2);
+begin
+    SELECT
+        CASE grade
+            WHEN 'A' THEN '10'
+            WHEN 'A-' THEN '9'
+            WHEN 'B' THEN '8'
+            WHEN 'B-' THEN '7'
+            WHEN 'C' THEN '6'
+            WHEN 'C-' THEN '5'
+            WHEN 'D' THEN '4'
+            WHEN 'E' THEN '2'
+            WHEN 'F' THEN '0'
+        END AS points_char;
+    points = CAST(points_char AS INTEGER);
+    return points;
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION cgpa_calculation
+(
+    student_id char(11)
+)
+LANGUAGE plpgsql
+SECURITY INVOKER
+RETURNS numeric(4, 2)
+AS $$
+declare
+    cgpa numeric(4, 2) := 00.00;
+    grade_points integer := 0;
+    transcript_table_name text;
+    cur CURSOR;
+    rec record;
+    course_credits integer;
+    total_credits integer := 0;
+    get_credits_command text;
+begin
+    transcript_table_name := 'transcript_' || student_id;
+
+    --for all courses in the student's transcript
+    open cur FOR EXECUTE 'SELECT * FROM ' || transcript_table_name;
+    LOOP
+        FETCH cur INTO rec;
+        EXIT when not found;
+
+        --get course credits from courses table
+        get_credits_command := 'SELECT C INTO course_credits FROM courses WHERE course_id = ' || rec.course_id || ';';
+        EXECUTE get_credits_command;
+
+        --update grade points and total credits
+        grade_points := grade_points + (course_credits * grade_to_points(rec.grade));
+        total_credits := total_credits + course_credits;
+    end LOOP;
+
+    --calculate cgpa
+    cgpa := CAST(grade_points AS decimal) / total_credits;
+    return cgpa;
+end;
+$$;
