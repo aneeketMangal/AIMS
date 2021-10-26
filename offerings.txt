@@ -1,7 +1,7 @@
 --key points to note
 -- 1. Course can now be offered by any other instructor (for same sem/year)
 -- 2. Course must exist.
--- 3. Grades are character grades (A, A-, B, B-)
+-- 3. Grades are character grades (A+, A-, B+, B-)
 
 --On each entry in course_offering, 2 tables will be created
 -- 1. Tickets corresponding to that course offering (security definer).
