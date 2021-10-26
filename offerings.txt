@@ -20,7 +20,7 @@ BEGIN
     table_name := concat('_', NEW.id,  '_grades');
     create_table_command := 'CREATE TABLE ' || table_name || ' (';
     create_table_command := create_table_command || ' student_id char(11) NOT NULL,';
-    create_table_command := create_table_command || ' grade char(2) NOT NULL,';
+    create_table_command := create_table_command || ' grade varchar(2) NOT NULL,';
     create_table_command := create_table_command || ' FOREIGN KEY(student_id) REFERENCES students(id));';
     
     EXECUTE create_table_command;
