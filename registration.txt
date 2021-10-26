@@ -1,0 +1,2 @@
+--Instructor should be able to see students enrolled in his course
+--Suggestion :- Whenever a student registers for a course, make an entry in grade table (with grade = NULL)
