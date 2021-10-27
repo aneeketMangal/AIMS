@@ -241,3 +241,27 @@ BEFORE INSERT
 ON batches
 FOR EACH ROW
 EXECUTE PROCEDURE create_advisor_ticket_table();
+
+CREATE OR REPLACE FUNCTION dean_ticket_response(
+    ticket_id integer,
+    response boolean
+)
+RETURNS void
+AS $_$
+DECLARE
+    table_name text;
+    batch_ text;
+    update_command text;
+BEGIN
+    if (response) then
+        update_command := 'UPDATE tickets set tickets.dean_ap = 2 WHERE tickets.id = ticket_id;';
+    else
+        update_command := 'UPDATE tickets set tickets.advisor_ap = 1 WHERE tickets.id = ticket_id;';
+    END if;
+    EXECUTE update_command;
+    DELETE FROM dean_tickets WHERE dean_tickets.id = ticket_id;
+    RETURN NULL;
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
