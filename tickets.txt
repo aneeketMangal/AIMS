@@ -7,11 +7,11 @@
 
 
 -- ticket history
-CREATE TABLE ticket_history(
-    id INTEGER NOT NULL,
-    faculty_ap BOOLEAN NOT NULL,
-    advisor_ap BOOLEAN NOT NULL, 
-    dean_ap BOOLEAN NOT NULL,
+CREATE TABLE tickets(
+    id SERIAL NOT NULL,
+    faculty_ap integer NOT NULL,
+    advisor_ap integer NOT NULL, 
+    dean_ap integer NOT NULL,
     PRIMARY KEY(id)
 );
 
@@ -25,10 +25,12 @@ DECLARE
     create_table_command text;
 BEGIN
     create_table_command := 'CREATE TABLE ' || table_name || ' (';
+
     create_table_command := create_table_command || ' id INTEGER NOT NULL,';
     create_table_command := create_table_command || ' student_id char(11) NOT NULL,';
     create_table_command := create_table_command || ' course_id INTEGER NOT NULL,';
     create_table_command := create_table_command || ' PRIMARY KEY(id),';
+    create_table_command := create_table_command || ' FOREIGN KEY(id) REFERENCES tickets(id),';
     create_table_command := create_table_command || ' FOREIGN KEY(student_id) REFERENCES students(id),';
     create_table_command := create_table_command || ' FOREIGN KEY(course_id) REFERENCES course_offering(id));';
     EXECUTE create_table_command;
@@ -43,7 +45,8 @@ GRANT ALL
 ON dean_tickets
 TO deanoffice;
 
---instructor ticket table creation trigger
+--instructor ticket table creation triggers
+--to be defined by instructor
 CREATE OR REPLACE FUNCTION create_instructor_ticket_table()
 RETURNS trigger
 AS $_$
@@ -58,7 +61,7 @@ BEGIN
     table_name := concat('_', NEW.id,  '_instructor_tickets');
     EXECUTE create_ticket_table(table_name);
 
-    grant_access_command := 'GRANT ALL ON ' || table_name ||' TO _' || ins_id || ';';
+    grant_access_command := 'GRANT ALL ON ' || table_name ||' TO _' || ins_id || ', deanoffice;';
     EXECUTE grant_access_command;
     RETURN NULL;
 END
@@ -71,6 +74,108 @@ AFTER INSERT
 ON course_offering
 FOR EACH ROW
 EXECUTE PROCEDURE create_instructor_ticket_table();
+
+-- ticket raise by student
+-- defined by superuser
+CREATE OR REPLACE FUNCTION raise_ticket(
+    course_id integer
+)
+RETURNS trigger
+AS $_$
+DECLARE
+    stu_id integer;
+    table_name text;
+    ins_id integer;
+    insert_command text;
+    ticket_id integer;
+BEGIN
+    stu_id := CAST(substr(user, 2) AS INTEGER);
+    ins_id := (SELECT c.insid from course_offering c where c.id = course_id);
+    table_name := concat('_', ins_id,  '_instructor_tickets');
+    
+    if NOT EXISTS(SELECT 1 FROM table_name t where t.student_id = stu_id AND t.course_id = $1) then
+        ticket_id := (SELECT COUNT(*)+1 from tickets);
+        insert_command := 'INSERT INTO ' || table_name || ' VALUES(id, student_id, course_id) VALUES (' ||ticket_id || ',' || stu_id || ',' || $1 || ');' ;
+        EXECUTE insert_command;
+        insert_command := 'INSERT INTO tickets(faculty_ap, advisor_ap, dean_ap) VALUES (0, 0, 0)';
+        EXECUTE insert_command;
+    else
+        RAISE EXCEPTION 'Ticket already raised';
+    END if;
+    RETURN NULL;
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION propagate(
+    ticket_id int, 
+    table_from text, 
+    table_to text
+)
+RETURNS trigger
+AS $_$
+DECLARE
+    stu_id integer;
+    table_name text;
+    ins_id integer;
+    insert_command text;
+    ticket_id integer;
+BEGIN
+
+    INSERT INTO table_to(id, student_id, course_id)
+    SELECT tf.id, tf.student_id, tf.course_id
+    FROM table_from tf WHERE tf.id = ticket_id;
+
+    DELETE FROM table_from tf
+    WHERE tf.id  = ticket_id;
+
+    RETURN NULL;
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+
+
+
+
+-- updation of status of raised ticket by instructor
+CREATE OR REPLACE FUNCTION instructor_ticket_response(
+    ticket_id integer,
+    response boolean
+)
+RETURNS trigger
+AS $_$
+DECLARE
+    table_name text;
+    department text;
+    adv_table_name text;
+    ins_id integer;
+    update_command text;
+    delete_command text;
+BEGIN
+    ins_id := CAST(substr(user, 2) AS INTEGER);
+    table_name := concat('_', ins_id,  '_instructor_tickets');
+    if (response) then
+        update_command := 'UPDATE tickets set tickets.faculty_ap = 2 WHERE tickets.id = ticket_id;';
+        department := (
+            SELECT st.batch
+            FROM students st
+            WHERE st.id = (SELECT ti.student_id from table_name ti where ti.id = ticket_id));
+        adv_table_name := concat('_', department,  '_advisor_tickets');
+        EXECUTE update_command;
+        EXECUTE propagate(table_name, adv_table_name);
+    else
+        update_command := 'UPDATE tickets set tickets.faculty_ap = 1 WHERE tickets.id = ticket_id;';
+        EXECUTE update_command;
+    END if;
+    RETURN NULL;
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
 
 
 -- advisor ticket table
@@ -95,6 +200,40 @@ END
 $_$
 LANGUAGE plpgsql
 SECURITY DEFINER;
+
+
+
+-- advisor ticket response
+CREATE OR REPLACE FUNCTION advisor_ticket_response(
+    ticket_id integer,
+    response boolean
+)
+RETURNS trigger
+AS $_$
+DECLARE
+    table_name text;
+    batch_ text;
+    ins_id integer;
+    update_command text;
+    delete_command text;
+BEGIN
+    ins_id := CAST(substr(user, 2) AS INTEGER);
+    batch_ := (SELECT b.batch from batches b WHERE b.adv_id = ins_id);
+    table_name := concat('_', batch_,  '_advisor_tickets');
+    if (response) then
+        update_command := 'UPDATE tickets set tickets.advisor_ap = 2 WHERE tickets.id = ticket_id;';
+        EXECUTE update_command;
+        EXECUTE propagate(table_name, _dean_tickets);
+    else
+        update_command := 'UPDATE tickets set tickets.advisor_ap = 1 WHERE tickets.id = ticket_id;';
+        EXECUTE update_command;
+    END if;
+    RETURN NULL;
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
 
 
 CREATE TRIGGER advisor_ticket_table
