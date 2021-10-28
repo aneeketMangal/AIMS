@@ -9,7 +9,7 @@
 
 
 --grade table template
-CREATE OR REPLACE FUNCTION create_grade_table()
+CREATE OR REPLACE PROCEDURE create_grade_table()
 RETURNS trigger
 AS $_$
 DECLARE
@@ -46,7 +46,8 @@ EXECUTE FUNCTION create_grade_table();
 CREATE OR REPLACE PROCEDURE update_constraint
 (
     offering_id integer,
-    batch_list varchar
+    batch_list varchar,
+    is_offer boolean
 )
 LANGUAGE plpgsql
 SECURITY INVOKER
@@ -55,15 +56,31 @@ declare
     --split the batch list into a table of batches, and define a cursor for the table
     cur CURSOR FOR (SELECT batch FROM regexp_split_to_table(batch_list, E',') AS batch);
     batch_in_list varchar;
+    ins_id integer;
+    offering_ins_id integer;
 begin
-    open cur;
+    ins_id := CAST(substr(user, 2) AS INTEGER);
+    offering_ins_id := (SELECT O.insid FROM course_offering O WHERE O.id = offering_id);
+    if NOT EXISTS (SELECT 1 FROM course_offering c where c.id = offering_id) then
+        RAISE EXCEPTION 'Invalid offering id.';
+    END if;
+    if ins_id != offering_ins then
+        RAISE EXCEPTION 'Unauthorised Request.';
+    END if;
+    open cur; 
     LOOP
         FETCH cur into batch_in_list;
         EXIT when not found;
-
-        INSERT INTO batch_constraint(id, batch)
-        VALUES
-        (offering_id, batch_in_list);
+        if(is_offer) then
+            INSERT INTO batch_constraint(id, batch)
+            VALUES
+            (offering_id, batch_in_list);
+        else
+            DELETE FROM batch_constraint b
+            WHERE
+            b.id = offering_id AND
+            b.batch = batch_in_list;
+        END if;
     end LOOP;
     close cur;
 end;$$;
@@ -91,8 +108,7 @@ declare
     ins_id integer;
     offering_id integer;
 begin
-    -- ins_id := CAST(substr(user, 2) AS INTEGER);
-    ins_id := 1;
+    ins_id := CAST(substr(user, 2) AS INTEGER);
 
     --if the course exists
     if EXISTS(SELECT 1 FROM courses WHERE courses.course_id = $1) then
@@ -111,9 +127,9 @@ begin
             SELECT count(*)
             INTO offering_id
             FROM course_offering;
-            call update_constraint(offering_id, batch_list);
+            call update_constraint(offering_id, batch_list, true);
         
-        --if the course is offered this sem-year
+        --if the course is offered this sem-year    
         else
            -- SELECT C.id into conflict_id
            -- FROM course_offering C

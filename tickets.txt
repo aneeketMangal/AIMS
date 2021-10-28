@@ -79,7 +79,7 @@ EXECUTE PROCEDURE create_instructor_ticket_table();
 -- ticket raise by student
 -- defined by superuser
 CREATE OR REPLACE FUNCTION raise_ticket(
-    course_id integer
+    offering_id integer
 )
 RETURNS void
 AS $_$
@@ -92,12 +92,8 @@ DECLARE
 BEGIN
     stu_id := substr(user, 2);
     
-    ins_id := (SELECT c.insid from course_offering c where c.id = course_id);
+    ins_id := (SELECT c.insid from course_offering c where c.id = $1);
     table_name := concat('_', ins_id,  '_instructor_tickets');
-    if NOT EXISTS(SELECT 1 from students s where s.id = stu_id) then
-        RAISE EXCEPTION 'Only students can raise a ticket';
-        RETURN;
-    END if;
 
     if EXISTS(SELECT 1 FROM table_name t where t.student_id = stu_id AND t.course_id = $1) then
         RAISE EXCEPTION 'Ticket already raised';
@@ -114,6 +110,11 @@ END
 $_$
 LANGUAGE plpgsql
 SECURITY DEFINER;
+
+GRANT EXECUTE
+ON PROCEDURE raise_ticket
+TO students;
+
 
 CREATE OR REPLACE FUNCTION propagate(
     ticket_id int, 
@@ -167,7 +168,7 @@ BEGIN
 
 
     if NOT EXISTS (SELECT 1 FROM table_name t where t.id = ticket_id) then
-        RAISE EXCEPTION 'ticket access unauthorised';
+        RAISE EXCEPTION 'Unauthorised Request.';
         RETURN;
     END if;
 
@@ -189,6 +190,9 @@ $_$
 LANGUAGE plpgsql
 SECURITY DEFINER;
 
+GRANT EXECUTE
+ON FUNCTION instructor_ticket_response
+TO faculty;
 
 
 -- advisor ticket table
