@@ -1,72 +1,46 @@
 --key points to note
--- 1. Course must not be offered by any other instructor (for same sem/year)
+-- 1. Course can now be offered by any other instructor (for same sem/year)
 -- 2. Course must exist.
+-- 3. Grades are character grades (A+, A-, B+, B-)
 
 --On each entry in course_offering, 2 tables will be created
 -- 1. Tickets corresponding to that course offering (security definer).
--- 2. Grades corresponding to that course offering.
+-- 2. Grades corresponding to that course offering (format: "__grades").
 
---grade table creation trigger
-CREATE OR REPLACE PROCEDURE create_grade_table()
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-declare
+
+--grade table template
+CREATE OR REPLACE FUNCTION create_grade_table()
+RETURNS trigger
+AS $_$
+DECLARE
     table_name text;
     create_table_command text;
     grant_permission_command text;
-begin
-    table_name := NEW.course_id || '_' || NEW.year || '_' || NEW.semester || '_grades';
+BEGIN
+    table_name := concat('_', NEW.id,  '_grades');
     create_table_command := 'CREATE TABLE ' || table_name || ' (';
     create_table_command := create_table_command || ' student_id char(11) NOT NULL,';
-    create_table_command := create_table_command || ' grade char(1) NOT NULL,';
-    create_table_command := create_table_command || ' FOREIGN KEY student_id REFERENCES students(id));';
+    create_table_command := create_table_command || ' grade varchar(2) NOT NULL,';
+    create_table_command := create_table_command || ' FOREIGN KEY(student_id) REFERENCES students(id));';
+    
     EXECUTE create_table_command;
 
     grant_permission_command := 'GRANT ALL ON ' || table_name || ' TO deanoffice;';
+
     EXECUTE grant_permission_command;
-end;$$;
+    return null;
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
 
 CREATE TRIGGER grade_table
-BEFORE INSERT
+AFTER INSERT
 ON course_offering
 FOR EACH ROW
-EXECUTE PROCEDURE create_grade_table();
+EXECUTE FUNCTION create_grade_table();
 
---ticket table creation trigger
-CREATE OR REPLACE PROCEDURE create_instructor_ticket_table()
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-declare
-    ins_id integer;
-    table_name text;
-    create_table_command text;
-    grant_access_command text;
-begin
-    ins_id := NEW.insid;
-
-    table_name := NEW.course_id || '_' || NEW.year || '_' || NEW.semester || '_tickets';
-    create_table_command := 'CREATE TABLE ' || table_name || ' (';
-    create_table_command := create_table_command || ' id INTEGER NOT NULL,';
-    create_table_command := create_table_command || ' student_id char(11) NOT NULL,';
-    create_table_command := create_table_command || ' course_id char(5) NOT NULL,';
-    create_table_command := create_table_command || ' semester INTEGER NOT NULL,';
-    create_table_command := create_table_command || ' year INTEGER NOT NULL,';
-    create_table_command := create_table_command || ' PRIMARY KEY(id),';
-    create_table_command := create_table_command || ' FOREIGN KEY student_id REFERENCES students(id),';
-    create_table_command := create_table_command || ' FOREIGN KEY course_id REFERENCES courses(courseId));';
-    EXECUTE create_table_command;
-
-    grant_access_command := 'GRANT ALL ON ' || table_name ||' TO _' || ins_id || ';';
-    EXECUTE grant_access_command;
-end;$$;
-
-CREATE TRIGGER instructor_ticket_table
-BEFORE INSERT
-ON course_offering
-FOR EACH ROW
-EXECUTE PROCEDURE create_instructor_ticket_table();
 
 --constraint update procedure
 CREATE OR REPLACE PROCEDURE update_constraint
@@ -98,7 +72,7 @@ GRANT EXECUTE
 ON PROCEDURE update_constraint
 TO faculty;
 
---procedure for offring courses
+--procedure for offering courses
 --batch_list to be provided as '2019csb,2020eeb,2018ceb'
 CREATE OR REPLACE PROCEDURE offer_course
 (
@@ -117,13 +91,19 @@ declare
     ins_id integer;
     offering_id integer;
 begin
-    ins_id := CAST(substr(user, 2) AS INTEGER);
+    -- ins_id := CAST(substr(user, 2) AS INTEGER);
+    ins_id := 1;
 
     --if the course exists
-    if EXISTS(SELECT 1 FROM courses WHERE courses.courseId = course_id) then
+    if EXISTS(SELECT 1 FROM courses WHERE courses.course_id = $1) then
         
-        --if the course is not offered this sem-year
-        if NOT EXISTS(SELECT 1 FROM course_offering C WHERE C.course_id = course_id and C.semester = semester and C.year = year) then
+        -- if time slots of none of the the previous offering by ins_id
+        -- conflicts with current offering's slot 
+        -- insid can offer the course
+        if NOT EXISTS(
+            SELECT 1 FROM course_offering C WHERE 
+            C.insid = ins_id and C.semester = $2 and C.year = $3 and C.slot = $5
+        ) then
             INSERT INTO course_offering(course_id, year, semester, insid, slot, classroom, CGPA)
             VALUES
             (course_id, year, semester, ins_id, slot, classroom, CGPA);
@@ -135,7 +115,11 @@ begin
         
         --if the course is offered this sem-year
         else
-            RAISE EXCEPTION 'Course % already offered.', course_id;
+           -- SELECT C.id into conflict_id
+           -- FROM course_offering C
+           -- WHERE
+           -- C.insid = ins_id and C.semester = semester and C.year = year and C.slot = slot;
+            RAISE EXCEPTION '% offering will have time slot conflict with an existing offering.', course_id;
         END if;
     
     --if the course doesn't exist
@@ -147,3 +131,4 @@ end;$$;
 GRANT EXECUTE
 ON PROCEDURE offer_course
 TO faculty;
+

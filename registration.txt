@@ -1,0 +1,9 @@
+--IF ENROLL TABLE IS DISSOLVED
+
+--Instructor should be able to see students enrolled in his course
+--Suggestion (Tanuj):- Whenever a student registers for a course, make an entry in grade table (with grade = NULL)
+
+--Student should be able to see what courses he/she is registered in
+--Suggestion (Tanuj):- Whenever a student registers for a course, make an entry in his/her transcript (with grade = NULL)
+
+--Tanuj - Will be working expecting these suggestions are followed.
