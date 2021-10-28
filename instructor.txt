@@ -11,15 +11,14 @@ BEGIN
 	ins_id := CAST(NEW.id AS text);
 	create_role_command := 'CREATE ROLE _'||ins_id;
 	create_role_command :=  create_role_command||' WITH IN GROUP faculty';
-	create_role_command :=  create_role_command||' LOGIN PASSWORD '';
+	create_role_command :=  create_role_command||' LOGIN PASSWORD ''';
 	create_role_command :=  create_role_command||ins_id;
-	create_role_command :=  create_role_command||'';';
+	create_role_command :=  create_role_command||''';';
 
 	RAISE NOTICE '%',create_role_command;
 	EXECUTE create_role_command;
 	
 	RETURN NEW;
-
 
 END;
 $$;

@@ -12,9 +12,9 @@ BEGIN
 	st_id := NEW.id;
 	create_role_command := 'CREATE ROLE _'||st_id;
 	create_role_command :=  create_role_command||' WITH IN GROUP student';
-	create_role_command :=  create_role_command||' LOGIN PASSWORD '';
+	create_role_command :=  create_role_command||' LOGIN PASSWORD ''';
 	create_role_command :=  create_role_command||st_id;
-	create_role_command :=  create_role_command||'';';
+	create_role_command :=  create_role_command||''';';
 	RAISE NOTICE '%',create_role_command;
 	EXECUTE create_role_command;
 
@@ -34,7 +34,6 @@ BEGIN
 	EXECUTE grant_access_command;
 	
 	RETURN NEW;
-
 
 END;
 $$;

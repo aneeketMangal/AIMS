@@ -1,0 +1,38 @@
+CREATE OR REPLACE FUNCTION add_curr_table()
+	RETURNS TRIGGER 
+	LANGUAGE PLPGSQL
+	
+AS $$
+DECLARE
+	curr_table_name text;
+	curr_batch batches.batch%type;
+	create_table_command text;
+	grant_access_command text;
+	
+BEGIN
+	curr_batch := NEW.batch;
+	curr_table_name := 'curriculum_'||curr_batch;
+	create_table_command := 'CREATE TABLE '||curr_table_name;
+	create_table_command := create_table_command||'(course_id char(5) NOT NULL,';
+	create_table_command := create_table_command||'course_type varchar(3) NOT NULL,';
+	create_table_command := create_table_command||'PRIMARY KEY(course_id)';
+	create_table_command := create_table_command||'FOREIGN KEY(course_id) REFERENCES course(course_id) );';
+	EXECUTE create_table_command;
+
+	grant_access_command := 'GRANT ALL ON '||curr_table_name;
+	grant_access_command := grant_access_command||' TO deanoffice;';
+	EXECUTE grant_access_command;
+
+	grant_access_command := 'GRANT SELECT ON '||curr_table_name;
+	grant_access_command := grant_access_command||' TO faculty,student;';
+	EXECUTE grant_access_command;
+	
+END;
+$$;
+
+
+CREATE TRIGGER new_batch
+	AFTER INSERT
+	ON batches
+	FOR EACH ROW
+	EXECUTE PROCEDURE add_curr_table();
