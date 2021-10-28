@@ -1,0 +1,33 @@
+CREATE OR REPLACE FUNCTION add_instructor()
+	RETURNS TRIGGER
+	LANGUAGE PLPGSQL
+AS $$
+DECLARE
+	ins_id text;
+	create_role_command text;
+	
+	
+BEGIN
+	ins_id := CAST(NEW.id AS text);
+	create_role_command := 'CREATE ROLE _'||ins_id;
+	create_role_command :=  create_role_command||' WITH IN GROUP faculty';
+	create_role_command :=  create_role_command||' LOGIN PASSWORD '';
+	create_role_command :=  create_role_command||ins_id;
+	create_role_command :=  create_role_command||'';';
+
+	RAISE NOTICE '%',create_role_command;
+	EXECUTE create_role_command;
+	
+	RETURN NEW;
+
+
+END;
+$$;
+
+--make delete for student table
+
+CREATE TRIGGER insert_instuctor
+	AFTER INSERT
+	ON instructor
+	FOR EACH ROW
+	EXECUTE PROCEDURE add_instructor();
