@@ -96,7 +96,7 @@ CREATE TABLE course_offering(
 CREATE TABLE enrol(
     student_id char(11) NOT NULL,
     offering_id INTEGER NOT NULL,
-    PRIMARY KEY (student_id, course_id),
+    PRIMARY KEY (student_id, offering_id),
     FOREIGN KEY(student_id) REFERENCES students(id),
     FOREIGN KEY(offering_id) REFERENCES course_offering(id)
 );
