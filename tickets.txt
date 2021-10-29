@@ -10,11 +10,47 @@
 -- ticket history
 CREATE TABLE tickets(
     id SERIAL NOT NULL,
+    student_id integer NOT NULL,
+    course_id integer NOT NOT NULL,
     faculty_ap integer NOT NULL,
     advisor_ap integer NOT NULL, 
     dean_ap integer NOT NULL,
     PRIMARY KEY(id)
 );
+
+-- view student's ticket
+CREATE OR REPLACE FUNCTION view_ticket_status(
+    ticket_id int
+)
+RETURNS record
+AS $_$
+DECLARE
+    create_table_command text;
+    stu_id integer;
+    out record;
+BEGIN
+    if NOT EXISTS(SELECT 1 from tickets t where t.id = ticket_id) then
+        RAISE EXCEPTION 'Invalid ticket ID';
+    END if;
+
+    stu_id := CAST(substr(user, 2) AS INTEGER);
+    if NOT EXISTS(SELECT 1 FROM tickets t WHERE t.id = ticket_id AND t.student_id = stu_id) then
+        RAISE EXCEPTION 'Unauthorised action.';
+    END if;
+
+    SELECT course_id, faculty_ap, advisor_ap, dean_ap
+    INTO out 
+    FROM tickets
+    WHERE tickets.id = tickets_id;
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+GRANT EXECUTE
+ON FUNCTION view_ticket_status
+TO students;
+
 
 --general ticket table template
 CREATE OR REPLACE FUNCTION create_ticket_table(
@@ -70,12 +106,6 @@ $_$
 LANGUAGE plpgsql
 SECURITY DEFINER;
 
-CREATE OR REPLACE TRIGGER instructor_ticket_table
-AFTER INSERT
-ON course_offering
-FOR EACH ROW
-EXECUTE PROCEDURE create_instructor_ticket_table();
-
 -- ticket raise by student
 -- defined by superuser
 CREATE OR REPLACE FUNCTION raise_ticket(
@@ -103,7 +133,7 @@ BEGIN
     ticket_id := (SELECT COUNT(*)+1 from tickets);
     insert_command := 'INSERT INTO ' || table_name || ' VALUES(id, student_id, course_id) VALUES (' ||ticket_id || ',' || stu_id || ',' || $1 || ');' ;
     EXECUTE insert_command;
-    insert_command := 'INSERT INTO tickets(faculty_ap, advisor_ap, dean_ap) VALUES (0, 0, 0)';
+    insert_command := 'INSERT INTO tickets(student_id, course_id, faculty_ap, advisor_ap, dean_ap) VALUES (' || stu_id || ',' || $1 || ', 0, 0, 0)';
     EXECUTE insert_command;
 
 END
@@ -271,7 +301,7 @@ SECURITY DEFINER;
 
 
 CREATE TRIGGER advisor_ticket_table
-BEFORE INSERT
+AFTER INSERT
 ON batches
 FOR EACH ROW
 EXECUTE PROCEDURE create_advisor_ticket_table();
