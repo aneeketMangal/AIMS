@@ -20,10 +20,10 @@ BEGIN
 
 	table_name := 'transcript_'||st_id;
 	create_transcript_command := 'CREATE TABLE '||table_name||' (';
-	create_transcript_command := create_transcript_command||'course_id char(5) NOT NULL,';
-	create_transcript_command := create_transcript_command||'grade INT,';
-	create_transcript_command := create_transcript_command||'PRIMARY KEY(course_id),';
-	create_transcript_command := create_transcript_command||'FOREIGN KEY(course_id) REFERENCES courses(courseid)';
+	create_transcript_command := create_transcript_command||'off_id INTEGER NOT NULL,';
+	create_transcript_command := create_transcript_command||'grade INTEGER,';
+	create_transcript_command := create_transcript_command||'PRIMARY KEY(off_id),';
+	create_transcript_command := create_transcript_command||'FOREIGN KEY(off_id) REFERENCES course_offering(id)';
 	create_transcript_command := create_transcript_command||');';
 	EXECUTE create_transcript_command;
 
