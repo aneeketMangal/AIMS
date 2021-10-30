@@ -42,7 +42,7 @@ begin
             transcript_table_name := 'transcript_' || grade_table_cursor.student_id;
             transcript_entry_command := 'INSERT INTO ' || transcript_table_name;
             transcript_entry_command := transcript_entry_command || ' VALUES (';
-            transcript_entry_command := transcript_entry_command || offering_table_row.course_id || ', ';
+            transcript_entry_command := transcript_entry_command || offering_table_row.id || ', ';
             transcript_entry_command := transcript_entry_command || grade_table_row.grade || ');';
             EXECUTE transcript_entry_command;
         end LOOP;
