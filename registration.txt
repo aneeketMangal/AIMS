@@ -41,9 +41,9 @@ BEGIN
 
 	transcript_name := 'transcript_'||student_id;
 	insert_transcript_command := 'INSERT INTO '||transcript_name;
-	insert_transcript_command := insert_transcript_command||'(course_id,grade) ';
+	insert_transcript_command := insert_transcript_command||'(off_id,grade) ';
 	insert_transcript_command := insert_transcript_command||'VALUES(';
-	insert_transcript_command := insert_transcript_command||off_course_id;
+	insert_transcript_command := insert_transcript_command||offering_id;
 	insert_transcript_command := insert_transcript_command||');';
 	EXECUTE insert_transcript_command;
 
@@ -67,6 +67,33 @@ CREATE TRIGGER enrol_student
 	FOR EACH ROW
 	EXECUTE PROCEDURE add_enrolment();
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 CREATE OR REPLACE FUNCTION request_enrolment
 (
 	off_id course_offering.id%type,
@@ -79,11 +106,28 @@ AS $$
 DECLARE
 	offering_row record;
 	student_row record;
-	credit_limit integer;
+	credit_limit float8;
 	temp record;	
-	
+	ifUser boolean := false;	
+	st_batch char(7);	
+	transcript_name text;
+	course_check_command text;
+	row_exist boolean;
 BEGIN
 	--check if student invoking function is same
+	
+	if st_id=substr(user,2) then
+		ifUser := true;
+	end if;	
+	
+	if user = 'deanoffice' then
+		ifUser	:= true
+	end if;
+
+	if ifUser=false
+		RAISE EXCEPTION 'Cannot create request for other user';
+	end if;
+
 	select * from course_offering 
 	into offering_row
 	where id=off_id and semester=curr_semester and year=curr_year;
@@ -99,8 +143,6 @@ BEGIN
 	if not found then
 		RAISE EXCEPTION 'student with id % not found',st_id;	
 	end if;
-
-		
 	
 	select * from enrol E, course_offering O
 	into temp
@@ -115,6 +157,7 @@ BEGIN
 		RAISE EXCEPTION '% has enroled course in same time slot',st_id;
 	end if;	
 
+	st_batch := CAST(student_row.batch AS char(4))||student_row.dept;
 	select * from batch_constraint B
 	into temp
 	where
@@ -126,9 +169,36 @@ BEGIN
 	end if;
 	
 	--have not done course before
+	transcript_name:= 'transcript_'||st_id;
+	course_check_command := 'SELECT if EXISTS(SELECT * FROM ' || transcript_name || ' T, course_offering O WHERE T.off_id=O.id and O.course_id=offering_row.course_id and T.grade!=''F'' INTO row_exist;';	
+	
+	if row_exist then
+		RAISE EXCEPTION 'student % has done this course before',st_id;
+	end if;
 	--prerequisite check
+			
+
+
+
 	--cgpa check
+	if offering_row.CGPA!=NULL then
+		if cgpa_calculation(st_id)<offering_row.CGPA then
+			RAISE EXCEPTION 'student's CGPA is less than minimum required CGPA';
+		end if;
+	end if;
+			
+
 	--credit limit check	
+	if curr_year=student_row.batch then
+		credit_limit := 18.0
+	else 
+		if curr_semester=1 then
+		else
+		end if;
+		
+	end if;
+
+
 END;
 $$;
 
