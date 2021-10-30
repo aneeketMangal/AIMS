@@ -82,29 +82,6 @@ GRANT ALL
 ON dean_tickets
 TO deanoffice;
 
---instructor ticket table creation triggers
---to be defined by instructor
-CREATE OR REPLACE FUNCTION create_instructor_ticket_table()
-RETURNS trigger
-AS $_$
-DECLARE
-    ins_id integer;
-    table_name text;
-    create_table_command text;
-    grant_access_command text;
-BEGIN
-    ins_id := NEW.insid;
-
-    table_name := concat('_', NEW.id,  '_instructor_tickets');
-    EXECUTE create_ticket_table(table_name);
-
-    grant_access_command := 'GRANT ALL ON ' || table_name ||' TO _' || ins_id || ', deanoffice;';
-    EXECUTE grant_access_command;
-    RETURN NULL;
-END
-$_$
-LANGUAGE plpgsql
-SECURITY DEFINER;
 
 -- ticket raise by student
 -- defined by superuser
@@ -223,30 +200,6 @@ SECURITY DEFINER;
 GRANT EXECUTE
 ON FUNCTION instructor_ticket_response
 TO faculty;
-
-
--- advisor ticket table
-CREATE OR REPLACE FUNCTION create_advisor_ticket_table()
-RETURNS trigger
-AS $_$
-DECLARE
-    ins_id integer;
-    table_name text;
-    create_table_command text;
-    grant_access_command text;
-BEGIN
-    ins_id := NEW.insid;
-
-    table_name := concat('_', NEW.batch,  '_advisor_tickets');
-    EXECUTE create_ticket_table(table_name);
-
-    grant_access_command := 'GRANT ALL ON ' || table_name ||' TO _' || ins_id || ';';
-    EXECUTE grant_access_command;
-    RETURN NULL;
-END
-$_$
-LANGUAGE plpgsql
-SECURITY DEFINER;
 
 
 

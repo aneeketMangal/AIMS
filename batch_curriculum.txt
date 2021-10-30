@@ -5,6 +5,7 @@ CREATE OR REPLACE FUNCTION add_batch()
 	
 AS $$
 DECLARE
+	table_name text;
 	curr_table_name text;
 	curr_batch batches.batch%type;
 	create_table_command text;
@@ -27,7 +28,13 @@ BEGIN
 	grant_access_command := 'GRANT SELECT ON '||curr_table_name;
 	grant_access_command := grant_access_command||' TO faculty,student;';
 	EXECUTE grant_access_command;
-	
+
+    table_name := concat('_', curr_batch,  '_advisor_tickets');
+    EXECUTE create_ticket_table(table_name);
+
+    grant_access_command := 'GRANT ALL ON ' || table_name ||' TO _' || NEW.adv_id ||', deanoffice' || ';';
+    EXECUTE grant_access_command;
+	RETURN NEW;
 END;
 $$;
 
