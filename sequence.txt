@@ -1,0 +1,2 @@
+1. copy init.txt
+2. 
