@@ -58,7 +58,7 @@ begin
         EXIT when not found;
 
         --get course credits from courses table
-        get_credits_command := 'SELECT C INTO course_credits FROM courses WHERE course_id = ' || rec.course_id || ';';
+        get_credits_command := 'SELECT courses.C INTO course_credits FROM courses, course_offering O WHERE O.id = ' || rec.off_id || ' and O.course_id = courses.course_id;';
         EXECUTE get_credits_command;
 
         --update grade points and total credits
