@@ -161,9 +161,3 @@ $$;
 GRANT EXECUTE 
 ON FUNCTION request_enrolment
 TO student,deanoffice;
-	
-
-
-
-
-

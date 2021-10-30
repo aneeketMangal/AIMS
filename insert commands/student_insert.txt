@@ -1,0 +1,10 @@
+INSERT INTO students(id, name, dept, batch) VALUES ('2020chb5217','nao','chb',2020);
+INSERT INTO students(id, name, dept, batch) VALUES ('2019csb9545','tmt','csb',2019);
+INSERT INTO students(id, name, dept, batch) VALUES ('2011ceb3410','wfwfdtafev','ceb',2011);
+INSERT INTO students(id, name, dept, batch) VALUES ('2019eeb8550','cmyzoj','eeb',2019);
+INSERT INTO students(id, name, dept, batch) VALUES ('2019meb5267','vfd','meb',2019);
+INSERT INTO students(id, name, dept, batch) VALUES ('2018mcb3911','ehsv','mcb',2018);
+INSERT INTO students(id, name, dept, batch) VALUES ('2012chb3520','gvvlv','chb',2012);
+INSERT INTO students(id, name, dept, batch) VALUES ('2010meb9484','srvv','meb',2010);
+INSERT INTO students(id, name, dept, batch) VALUES ('2015eeb2308','tjobq','eeb',2015);
+INSERT INTO students(id, name, dept, batch) VALUES ('2013mcb2733','zgytlcu','mcb',2013);

@@ -19,7 +19,7 @@ def student(n):
         batch = str(random.randint(2008, 2020))
         id = generateStudentId(dep, batch)
         name = generateRandomName()
-        print("INSERT INTO students(id, name, dept, batch) VALUES ("+ id + "," + name + "," + dep + "," + batch + ");")
+        print("INSERT INTO students(id, name, dept, batch) VALUES ('"+ id + "','" + name + "','" + dep + "'," + str(batch) + ");")
 
 
 
@@ -28,7 +28,7 @@ def instructor(n):
         id = i+1
         name = generateRandomName()
         dep = random.choice(dept)
-        print("INSERT INTO instructor(id, name, dep) VALUES ("+ id + "," + name + "," + dep + ");")
+        print("INSERT INTO instructor(id, name, dept) VALUES ("+ str(id) + ",'" + name + "','" + dep + "');")
 
 course = []
 def courses(n):
@@ -45,9 +45,9 @@ def courses(n):
         S = str(random.randint(1, 4))
         C = str(random.randint(1, 4))
         L = str(random.randint(1, 4))
-        print("INSERT INTO courses(course_id, Title, L, T, P, S, C) VALUES ("+ course_id + "," + title + "," + L + ',' + T+ "," + P + ',' + S + ',' + C + ");")
+        print("INSERT INTO courses(course_id, Title, L, T, P, S, C) VALUES ('"+ course_id + "','" + title + "'," + L + ',' + T+ "," + P + ',' + S + ',' + C + ");")
 
-courses(20)
+courses(10)
 preReqs = []
 
 for i in range(len(course)):
@@ -70,9 +70,9 @@ preReqs = list(set(preReqs))
 
 def prereq():
     for i in preReqs:
-        print("INSERT INTO prereq(course_id, prereq_id) VALUES ("+ str(course[i[0]]) + ',' + str(course[i[1]]) + ");")
+        print("INSERT INTO prereq(course_id, prereq_id) VALUES ('"+ str(course[i[0]]) + "','" + str(course[i[1]]) + "');")
 
 prereq()
 
-students(50)
-instructor(10)
+#student(10)
+#instructor(10)

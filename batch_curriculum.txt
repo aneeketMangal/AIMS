@@ -17,8 +17,8 @@ BEGIN
 	create_table_command := 'CREATE TABLE '||curr_table_name;
 	create_table_command := create_table_command||'(course_id char(5) NOT NULL,';
 	create_table_command := create_table_command||'course_type varchar(3) NOT NULL,';
-	create_table_command := create_table_command||'PRIMARY KEY(course_id)';
-	create_table_command := create_table_command||'FOREIGN KEY(course_id) REFERENCES course(course_id) );';
+	create_table_command := create_table_command||'PRIMARY KEY(course_id), ';
+	create_table_command := create_table_command||'FOREIGN KEY(course_id) REFERENCES courses(course_id) );';
 	EXECUTE create_table_command;
 
 	grant_access_command := 'GRANT ALL ON '||curr_table_name;
