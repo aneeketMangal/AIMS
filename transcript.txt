@@ -17,7 +17,7 @@ AS $$
 declare
     --cursor for offerings in the given semester and year
     offering_cursor CURSOR FOR (SELECT * FROM course_offering O WHERE O.semester = semester and O.year = year);
-    grade_table_cursor CURSOR;
+    grade_table_cursor REFCURSOR;
     offering_table_row record;
     grade_table_name text;
     grade_table_row record;
@@ -26,7 +26,7 @@ declare
 begin
     open offering_cursor;
     LOOP
-        FETCH offering_cursor INTO offering_table_row
+        FETCH offering_cursor INTO offering_table_row;
         EXIT when not found;
 
         --GRADE TABLE NAME TO BE ADDED
