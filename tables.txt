@@ -57,7 +57,7 @@ TO deanoffice;
 
 GRANT SELECT
 ON instructor
-TO students, faculty;
+TO student, faculty;
 
 CREATE TABLE timeslots(
     slot_type char(6) NOT NULL,

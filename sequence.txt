@@ -1,2 +1,6 @@
-1. copy init.txt
-2. 
+1. init
+2. tables
+3. batch_curriculum
+4. student
+5. instructor
+6. 
