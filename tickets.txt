@@ -5,15 +5,52 @@
 --Similarly, a table can be created/updated for each student whenever he/she raises a ticket (which shows status)
 --Constraints to be checked can be that the course must be offered
 
+--
 
 -- ticket history
 CREATE TABLE tickets(
     id SERIAL NOT NULL,
+    student_id integer NOT NULL,
+    course_id integer NOT NOT NULL,
     faculty_ap integer NOT NULL,
     advisor_ap integer NOT NULL, 
     dean_ap integer NOT NULL,
     PRIMARY KEY(id)
 );
+
+-- view student's ticket
+CREATE OR REPLACE FUNCTION view_ticket_status(
+    ticket_id int
+)
+RETURNS record
+AS $_$
+DECLARE
+    create_table_command text;
+    stu_id integer;
+    out record;
+BEGIN
+    if NOT EXISTS(SELECT 1 from tickets t where t.id = ticket_id) then
+        RAISE EXCEPTION 'Invalid ticket ID';
+    END if;
+
+    stu_id := CAST(substr(user, 2) AS INTEGER);
+    if NOT EXISTS(SELECT 1 FROM tickets t WHERE t.id = ticket_id AND t.student_id = stu_id) then
+        RAISE EXCEPTION 'Unauthorised action.';
+    END if;
+
+    SELECT course_id, faculty_ap, advisor_ap, dean_ap
+    INTO out 
+    FROM tickets
+    WHERE tickets.id = tickets_id;
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+GRANT EXECUTE
+ON FUNCTION view_ticket_status
+TO students;
+
 
 --general ticket table template
 CREATE OR REPLACE FUNCTION create_ticket_table(
@@ -69,18 +106,12 @@ $_$
 LANGUAGE plpgsql
 SECURITY DEFINER;
 
-CREATE OR REPLACE TRIGGER instructor_ticket_table
-AFTER INSERT
-ON course_offering
-FOR EACH ROW
-EXECUTE PROCEDURE create_instructor_ticket_table();
-
 -- ticket raise by student
 -- defined by superuser
 CREATE OR REPLACE FUNCTION raise_ticket(
-    course_id integer
+    offering_id integer
 )
-RETURNS trigger
+RETURNS void
 AS $_$
 DECLARE
     stu_id integer;
@@ -89,38 +120,41 @@ DECLARE
     insert_command text;
     ticket_id integer;
 BEGIN
-    stu_id := CAST(substr(user, 2) AS INTEGER);
-    ins_id := (SELECT c.insid from course_offering c where c.id = course_id);
-    table_name := concat('_', ins_id,  '_instructor_tickets');
+    stu_id := substr(user, 2);
     
-    if NOT EXISTS(SELECT 1 FROM table_name t where t.student_id = stu_id AND t.course_id = $1) then
-        ticket_id := (SELECT COUNT(*)+1 from tickets);
-        insert_command := 'INSERT INTO ' || table_name || ' VALUES(id, student_id, course_id) VALUES (' ||ticket_id || ',' || stu_id || ',' || $1 || ');' ;
-        EXECUTE insert_command;
-        insert_command := 'INSERT INTO tickets(faculty_ap, advisor_ap, dean_ap) VALUES (0, 0, 0)';
-        EXECUTE insert_command;
-    else
+    ins_id := (SELECT c.insid from course_offering c where c.id = $1);
+    table_name := concat('_', ins_id,  '_instructor_tickets');
+
+    if EXISTS(SELECT 1 FROM table_name t where t.student_id = stu_id AND t.course_id = $1) then
         RAISE EXCEPTION 'Ticket already raised';
+        RETURN;
     END if;
-    RETURN NULL;
+
+    ticket_id := (SELECT COUNT(*)+1 from tickets);
+    insert_command := 'INSERT INTO ' || table_name || ' VALUES(id, student_id, course_id) VALUES (' ||ticket_id || ',' || stu_id || ',' || $1 || ');' ;
+    EXECUTE insert_command;
+    insert_command := 'INSERT INTO tickets(student_id, course_id, faculty_ap, advisor_ap, dean_ap) VALUES (' || stu_id || ',' || $1 || ', 0, 0, 0)';
+    EXECUTE insert_command;
+
 END
 $_$
 LANGUAGE plpgsql
 SECURITY DEFINER;
+
+GRANT EXECUTE
+ON PROCEDURE raise_ticket
+TO students;
+
 
 CREATE OR REPLACE FUNCTION propagate(
     ticket_id int, 
     table_from text, 
     table_to text
 )
-RETURNS trigger
+RETURNS void
 AS $_$
 DECLARE
-    stu_id integer;
-    table_name text;
-    ins_id integer;
-    insert_command text;
-    ticket_id integer;
+
 BEGIN
 
     INSERT INTO table_to(id, student_id, course_id)
@@ -130,7 +164,6 @@ BEGIN
     DELETE FROM table_from tf
     WHERE tf.id  = ticket_id;
 
-    RETURN NULL;
 END
 $_$
 LANGUAGE plpgsql
@@ -145,7 +178,7 @@ CREATE OR REPLACE FUNCTION instructor_ticket_response(
     ticket_id integer,
     response boolean
 )
-RETURNS trigger
+RETURNS void
 AS $_$
 DECLARE
     table_name text;
@@ -157,6 +190,18 @@ DECLARE
 BEGIN
     ins_id := CAST(substr(user, 2) AS INTEGER);
     table_name := concat('_', ins_id,  '_instructor_tickets');
+
+    if NOT EXISTS (SELECT 1 FROM tickets t where t.id = ticket_id) then
+        RAISE EXCEPTION 'invalid ticket id';
+        RETURN;
+    END if;
+
+
+    if NOT EXISTS (SELECT 1 FROM table_name t where t.id = ticket_id) then
+        RAISE EXCEPTION 'Unauthorised Request.';
+        RETURN;
+    END if;
+
     if (response) then
         update_command := 'UPDATE tickets set tickets.faculty_ap = 2 WHERE tickets.id = ticket_id;';
         department := (
@@ -170,12 +215,14 @@ BEGIN
         update_command := 'UPDATE tickets set tickets.faculty_ap = 1 WHERE tickets.id = ticket_id;';
         EXECUTE update_command;
     END if;
-    RETURN NULL;
 END
 $_$
 LANGUAGE plpgsql
 SECURITY DEFINER;
 
+GRANT EXECUTE
+ON FUNCTION instructor_ticket_response
+TO faculty;
 
 
 -- advisor ticket table
@@ -208,7 +255,7 @@ CREATE OR REPLACE FUNCTION advisor_ticket_response(
     ticket_id integer,
     response boolean
 )
-RETURNS trigger
+RETURNS void
 AS $_$
 DECLARE
     table_name text;
@@ -218,8 +265,25 @@ DECLARE
     delete_command text;
 BEGIN
     ins_id := CAST(substr(user, 2) AS INTEGER);
+    if NOT EXISTS(SELECT 1 from batches b WHERE b.adv_id = ins_id) then
+        RAISE EXCEPTION 'unauthorised access';
+        RETURN;
+    END if;
+
     batch_ := (SELECT b.batch from batches b WHERE b.adv_id = ins_id);
     table_name := concat('_', batch_,  '_advisor_tickets');
+
+    if NOT EXISTS (SELECT 1 FROM tickets t where t.id = ticket_id) then
+        RAISE EXCEPTION 'invalid ticket id';
+        RETURN;
+    END if;
+
+
+    if NOT EXISTS (SELECT 1 FROM table_name t where t.id = ticket_id) then
+        RAISE EXCEPTION 'ticket access unauthorised';
+        RETURN;
+    END if;
+
     if (response) then
         update_command := 'UPDATE tickets set tickets.advisor_ap = 2 WHERE tickets.id = ticket_id;';
         EXECUTE update_command;
@@ -228,7 +292,7 @@ BEGIN
         update_command := 'UPDATE tickets set tickets.advisor_ap = 1 WHERE tickets.id = ticket_id;';
         EXECUTE update_command;
     END if;
-    RETURN NULL;
+    RETURN;
 END
 $_$
 LANGUAGE plpgsql
@@ -237,7 +301,7 @@ SECURITY DEFINER;
 
 
 CREATE TRIGGER advisor_ticket_table
-BEFORE INSERT
+AFTER INSERT
 ON batches
 FOR EACH ROW
 EXECUTE PROCEDURE create_advisor_ticket_table();
@@ -263,5 +327,4 @@ BEGIN
     RETURN NULL;
 END
 $_$
-LANGUAGE plpgsql
-SECURITY DEFINER;
+LANGUAGE plpgsql;

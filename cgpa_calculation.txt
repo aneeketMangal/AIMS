@@ -4,11 +4,11 @@
 
 CREATE OR REPLACE FUNCTION grade_to_points
 (
-    grade varchar(2);
+    grade varchar(2)
 )
+RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
-RETURNS integer
 AS $$
 declare
     points integer;
@@ -35,15 +35,15 @@ CREATE OR REPLACE FUNCTION cgpa_calculation
 (
     student_id char(11)
 )
+RETURNS numeric(4, 2)
 LANGUAGE plpgsql
 SECURITY INVOKER
-RETURNS numeric(4, 2)
 AS $$
 declare
     cgpa numeric(4, 2) := 00.00;
     grade_points integer := 0;
     transcript_table_name text;
-    cur CURSOR;
+    cur REFCURSOR;
     rec record;
     course_credits integer;
     total_credits integer := 0;
