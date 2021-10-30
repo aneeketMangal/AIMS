@@ -101,6 +101,7 @@ CREATE OR REPLACE FUNCTION request_enrolment
 	curr_semester course_offering.semester%type,
 	curr_year course_offering.year%type
 )
+RETURNS VOID
 LANGUAGE PLPGSQL
 AS $$
 DECLARE
@@ -112,7 +113,14 @@ DECLARE
 	st_batch char(7);	
 	transcript_name text;
 	course_check_command text;
+	credit_calculate_command text;
 	row_exist boolean;
+	prev_year integer;
+	prev_sem_credit float8;
+	curr_sem_credit float8;
+	course_credit float8;
+	prereq_cursor refcursor;
+	prereq_row record;
 BEGIN
 	--check if student invoking function is same
 	
@@ -121,10 +129,10 @@ BEGIN
 	end if;	
 	
 	if user = 'deanoffice' then
-		ifUser	:= true
+		ifUser	:= true;
 	end if;
 
-	if ifUser=false
+	if ifUser=false then
 		RAISE EXCEPTION 'Cannot create request for other user';
 	end if;
 
@@ -170,13 +178,26 @@ BEGIN
 	
 	--have not done course before
 	transcript_name:= 'transcript_'||st_id;
-	course_check_command := 'SELECT if EXISTS(SELECT * FROM ' || transcript_name || ' T, course_offering O WHERE T.off_id=O.id and O.course_id=offering_row.course_id and T.grade!=''F'' INTO row_exist;';	
-	
+	course_check_command := 'SELECT if EXISTS(SELECT * FROM ' || transcript_name || ' T, course_offering O WHERE T.off_id=O.id and O.course_id=offering_row.course_id and T.grade!=''F'') INTO row_exist;';	
+	EXECUTE course_check_command;	
+
 	if row_exist then
 		RAISE EXCEPTION 'student % has done this course before',st_id;
 	end if;
+
 	--prerequisite check
-			
+	open prereq_cursor FOR EXECUTE 'SELECT * FROM prereq P where P.course_id='||offering_row.course_id||';';				
+	LOOP 
+		FETCH prereq_cur INTO prereq_row;
+		EXIT when not found;
+		
+		course_check_command := 'SELECT if EXISTS(SELECT * FROM '||transcript_name||' T, course_offering O where T.off_id=O.id and O.course_id=prereq_row.prereq_id and T.grade!='F' and T.grade!=NULL) 					INTO row_exist;';
+		EXECUTE course_check_command;
+		if not row_exist then
+			RAISE EXCEPTION 'prerequiste course % not completed yet',prereq_row.prereq_id;
+		end if;
+
+	END LOOP;
 
 
 
@@ -192,13 +213,41 @@ BEGIN
 	if curr_year=student_row.batch then
 		credit_limit := 18.0
 	else 
+		prev_year:= curr_year-1;
 		if curr_semester=1 then
+
+			credit_calculate_command := 'SELECT sum(C) into credit_limit from '||transcript_name||' T, course_offering O, courses C where T.off_id=O.id and O.course_id=C.course_id and O.year='||					prev_year||'and T.grade!=''F'' group by O.year;';								
+			EXECUTE credit_calculate_command;
+
 		else
+
+			credit_calculate_command := 'SELECT sum(C) into credit_limit from '||transcript_name||' T, course_offering O, courses C where T.off_id=O.id and O.course_id=C.course_id and O.year='||					curr_year||' and O.semester=1 and T.grade!=''F'' group by O.year;';
+			EXECUTE credit_calculate_command;
+
+			credit_calculate_command := 'SELECT sum(C) into prev_sem_credit from '||transcript_name||' T, course_offering O, courses C where T.off_id=O.id and O.course_id=C.course_id and O.year='||				prev_year||' and O.semester=2 and T.grade!=''F'' group by O.year;';
+			EXECUTE credit_calculate_command;
+			credit_limit:= credit_limit+prev_sum_credit;
+
 		end if;
-		
+		credit_limit := 1.25*(credit_limit/2);		
 	end if;
 
+	credit_calculate_command := 'SELECT sum(C) into curr_sem_credit from '||transcript_name||' T, course_offering O, courses C where T.off_id=O.id and O.course_id=C.course_id group by O.year;';
+	EXECUTE credit_calculate_command;
+	
+	select C from courses
+	into course_credt
+	where 
+	course_id=offering_row.course_id;
+	
+	if curr_sem_credit+C>credit_limit then
+		RAISE EXCEPTION 'credit limit exceeded';
+	else
+		INSERT into enrol(student_id,offering_id) VALUES(off_id,st_id);	
+	end if;
 
+	RETURN NULL;
+	
 END;
 $$;
 
