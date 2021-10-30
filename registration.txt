@@ -1,98 +1,4 @@
---IF ENROLL TABLE IS DISSOLVED
-
---Instructor should be able to see students enrolled in his course
---Suggestion (Tanuj):- Whenever a student registers for a course, make an entry in grade table (with grade = NULL)
-
---Student should be able to see what courses he/she is registered in
---Suggestion (Tanuj):- Whenever a student registers for a course, make an entry in his/her transcript (with grade = NULL)
-
---Tanuj - Will be working expecting these suggestions are followed.
 --transcript_2019csb1124
-
-
-CREATE OR REPLACE FUNCTION add_enrolment()
-	RETURNS TRIGGER 
-	LANGUAGE PLPGSQL
-	SECURITY DEFINER
-AS $$
-DECLARE
-	curr_yr integer := 2021;
-	curr_sem integer := 1;
-	off_course_id char(5);
-	off_semester integer;
-	off_year integer;
-	transcript_name text;
-	grade_table_name text;
-	insert_transcript_command text;
-	insert_grade_command text;
-	offering_id enrol.offering_id%type;
-	student_id  enrol.student_id%type;	
-BEGIN
-	offering_id = NEW.offering_id;
-	student_id = NEW.student_id;
-	
-	select course_id from course_offering
-	into off_course_id
-	where id=offering_id and semester=curr_sem and year=curr_yr;
-
-	if not found then
-		RAISE EXCEPTION'current offering with id % not found',offering_id;	
-	end if;
-
-	transcript_name := 'transcript_'||student_id;
-	insert_transcript_command := 'INSERT INTO '||transcript_name;
-	insert_transcript_command := insert_transcript_command||'(off_id,grade) ';
-	insert_transcript_command := insert_transcript_command||'VALUES(';
-	insert_transcript_command := insert_transcript_command||offering_id;
-	insert_transcript_command := insert_transcript_command||');';
-	EXECUTE insert_transcript_command;
-
-		
-	grade_table_name := concat('_',offering_id,'_grades');
-	insert_grade_command := 'INSERT INTO '||grade_table_name;
-	insert_grade_command := insert_grade_command||'(student_id,grade) ';
-	insert_grade_command := insert_grade_command||'VALUES(';
-	insert_grade_command := insert_grade_command||student_id;
-	insert_grade_command := insert_grade_command||');';
-
-	RETURN NEW;
-	
-END;
-$$;
-
-
-CREATE TRIGGER enrol_student
-	BEFORE INSERT
-	ON enrol
-	FOR EACH ROW
-	EXECUTE PROCEDURE add_enrolment();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 CREATE OR REPLACE FUNCTION request_enrolment
 (
@@ -232,7 +138,7 @@ BEGIN
 		credit_limit := 1.25*(credit_limit/2);		
 	end if;
 
-	credit_calculate_command := 'SELECT sum(C) into curr_sem_credit from '||transcript_name||' T, course_offering O, courses C where T.off_id=O.id and O.course_id=C.course_id group by O.year;';
+	credit_calculate_command := 'SELECT sum(C) into curr_sem_credit from enrol E, course_offering O, courses C where E.off_id=O.id and O.course_id=C.course_id and E.student_id=st_id and O.semester='||curr_semester||' and O.year='||curr_year||' group by O.year';
 	EXECUTE credit_calculate_command;
 	
 	select C from courses
@@ -240,7 +146,8 @@ BEGIN
 	where 
 	course_id=offering_row.course_id;
 	
-	if curr_sem_credit+C>credit_limit then
+	if curr_sem_credit+course_credit>credit_limit then
+		--check for ticket
 		RAISE EXCEPTION 'credit limit exceeded';
 	else
 		INSERT into enrol(student_id,offering_id) VALUES(off_id,st_id);	
@@ -252,7 +159,7 @@ END;
 $$;
 
 GRANT EXECUTE 
-ON PROCEDURE request_enrolment()
+ON FUNCTION request_enrolment
 TO student,deanoffice;
 	
 

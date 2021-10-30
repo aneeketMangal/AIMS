@@ -30,7 +30,7 @@ begin
         EXIT when not found;
 
         --GRADE TABLE NAME TO BE ADDED
-        grade_table_name = ;
+        grade_table_name = concat('_',offering_table_row.id,'_grades');
 
         --open grade table cursor
         open grade_table_cursor FOR EXECUTE 'SELECT student_id, grade FROM ' || grade_table_name;

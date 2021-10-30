@@ -1,6 +1,12 @@
-1. init
-2. tables
-3. batch_curriculum
-4. student
-5. instructor
-6. 
+init
+tables
+tickets
+batch_curriculum
+student
+instructor
+offerings
+cgpa_calculation
+grades
+graduation_check
+transcript
+registration

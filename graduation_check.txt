@@ -140,5 +140,5 @@ end;
 $$;
 
 GRANT EXECUTE
-ON graduation_check()
+ON FUNCTION graduation_check
 TO deanoffice;

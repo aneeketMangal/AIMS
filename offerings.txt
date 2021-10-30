@@ -9,8 +9,8 @@
 
 
 --grade table template
-CREATE OR REPLACE PROCEDURE create_grade_table()
-RETURNS trigger
+CREATE OR REPLACE FUNCTION create_grade_table()
+RETURNS TRIGGER
 AS $_$
 DECLARE
     table_name text;

@@ -11,7 +11,7 @@
 CREATE TABLE tickets(
     id SERIAL NOT NULL,
     student_id integer NOT NULL,
-    course_id integer NOT NOT NULL,
+    course_id integer NOT NULL,
     faculty_ap integer NOT NULL,
     advisor_ap integer NOT NULL, 
     dean_ap integer NOT NULL,
@@ -49,7 +49,7 @@ SECURITY DEFINER;
 
 GRANT EXECUTE
 ON FUNCTION view_ticket_status
-TO students;
+TO student;
 
 
 --general ticket table template
@@ -119,8 +119,8 @@ LANGUAGE plpgsql
 SECURITY DEFINER;
 
 GRANT EXECUTE
-ON PROCEDURE raise_ticket
-TO students;
+ON FUNCTION raise_ticket
+TO student;
 
 
 CREATE OR REPLACE FUNCTION propagate(
@@ -252,13 +252,6 @@ LANGUAGE plpgsql
 SECURITY DEFINER;
 
 
-
-CREATE TRIGGER advisor_ticket_table
-AFTER INSERT
-ON batches
-FOR EACH ROW
-EXECUTE PROCEDURE create_advisor_ticket_table();
-
 CREATE OR REPLACE FUNCTION dean_ticket_response(
     ticket_id integer,
     response boolean
@@ -277,7 +270,7 @@ BEGIN
     END if;
     EXECUTE update_command;
     DELETE FROM dean_tickets WHERE dean_tickets.id = ticket_id;
-    RETURN NULL;
+    RETURN;
 END
 $_$
 LANGUAGE plpgsql;

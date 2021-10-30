@@ -67,5 +67,5 @@ end;
 $$;
 
 GRANT EXECUTE
-ON PROCEDURE add_grades()
+ON PROCEDURE add_grades
 TO faculty;
