@@ -1,4 +1,5 @@
-CREATE OR REPLACE FUNCTION add_curr_table()
+--merge advisor ticket table functionality
+CREATE OR REPLACE FUNCTION add_batch()
 	RETURNS TRIGGER 
 	LANGUAGE PLPGSQL
 	
@@ -35,4 +36,4 @@ CREATE TRIGGER new_batch
 	AFTER INSERT
 	ON batches
 	FOR EACH ROW
-	EXECUTE PROCEDURE add_curr_table();
+	EXECUTE PROCEDURE add_batch();

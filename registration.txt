@@ -7,3 +7,137 @@
 --Suggestion (Tanuj):- Whenever a student registers for a course, make an entry in his/her transcript (with grade = NULL)
 
 --Tanuj - Will be working expecting these suggestions are followed.
+--transcript_2019csb1124
+
+
+CREATE OR REPLACE FUNCTION add_enrolment()
+	RETURNS TRIGGER 
+	LANGUAGE PLPGSQL
+	SECURITY DEFINER
+AS $$
+DECLARE
+	curr_yr integer := 2021;
+	curr_sem integer := 1;
+	off_course_id char(5);
+	off_semester integer;
+	off_year integer;
+	transcript_name text;
+	grade_table_name text;
+	insert_transcript_command text;
+	insert_grade_command text;
+	offering_id enrol.offering_id%type;
+	student_id  enrol.student_id%type;	
+BEGIN
+	offering_id = NEW.offering_id;
+	student_id = NEW.student_id;
+	
+	select course_id from course_offering
+	into off_course_id
+	where id=offering_id and semester=curr_sem and year=curr_yr;
+
+	if not found then
+		RAISE EXCEPTION'current offering with id % not found',offering_id;	
+	end if;
+
+	transcript_name := 'transcript_'||student_id;
+	insert_transcript_command := 'INSERT INTO '||transcript_name;
+	insert_transcript_command := insert_transcript_command||'(course_id,grade) ';
+	insert_transcript_command := insert_transcript_command||'VALUES(';
+	insert_transcript_command := insert_transcript_command||off_course_id;
+	insert_transcript_command := insert_transcript_command||');';
+	EXECUTE insert_transcript_command;
+
+		
+	grade_table_name := concat('_',offering_id,'_grades');
+	insert_grade_command := 'INSERT INTO '||grade_table_name;
+	insert_grade_command := insert_grade_command||'(student_id,grade) ';
+	insert_grade_command := insert_grade_command||'VALUES(';
+	insert_grade_command := insert_grade_command||student_id;
+	insert_grade_command := insert_grade_command||');';
+
+	RETURN NEW;
+	
+END;
+$$;
+
+
+CREATE TRIGGER enrol_student
+	BEFORE INSERT
+	ON enrol
+	FOR EACH ROW
+	EXECUTE PROCEDURE add_enrolment();
+
+CREATE OR REPLACE FUNCTION request_enrolment
+(
+	off_id course_offering.id%type,
+	st_id students.id%type,
+	curr_semester course_offering.semester%type,
+	curr_year course_offering.year%type
+)
+LANGUAGE PLPGSQL
+AS $$
+DECLARE
+	offering_row record;
+	student_row record;
+	credit_limit integer;
+	temp record;	
+	
+BEGIN
+	--check if student invoking function is same
+	select * from course_offering 
+	into offering_row
+	where id=off_id and semester=curr_semester and year=curr_year;
+	
+	if not found then
+		RAISE EXCEPTION 'current offering with id % not found',off_id;	
+	end if;
+		
+	select * from students
+	into student_row
+	where id=st_id;
+
+	if not found then
+		RAISE EXCEPTION 'student with id % not found',st_id;	
+	end if;
+
+		
+	
+	select * from enrol E, course_offering O
+	into temp
+	where 
+	E.offering_id = O.id
+	and E.student_id = st_id
+	and O.semester=curr_semester
+	and O.year=curr_year
+	and O.slot=offering_row.slot;
+
+	if found then
+		RAISE EXCEPTION '% has enroled course in same time slot',st_id;
+	end if;	
+
+	select * from batch_constraint B
+	into temp
+	where
+	B.id=off_id
+	and B.batch=student_row.batch;
+
+	if not found then
+		RAISE EXCEPTION 'Your batch has not been allowed by instructor to enrol';
+	end if;
+	
+	--have not done course before
+	--prerequisite check
+	--cgpa check
+	--credit limit check	
+END;
+$$;
+
+GRANT EXECUTE 
+ON PROCEDURE request_enrolment()
+TO student,deanoffice;
+	
+
+
+
+
+
