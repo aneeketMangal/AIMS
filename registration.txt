@@ -188,10 +188,10 @@ BEGIN
 	--prerequisite check
 	open prereq_cursor FOR EXECUTE 'SELECT * FROM prereq P where P.course_id='||offering_row.course_id||';';				
 	LOOP 
-		FETCH prereq_cur INTO prereq_row;
+		FETCH prereq_cursor INTO prereq_row;
 		EXIT when not found;
 		
-		course_check_command := 'SELECT if EXISTS(SELECT * FROM '||transcript_name||' T, course_offering O where T.off_id=O.id and O.course_id=prereq_row.prereq_id and T.grade!='F' and T.grade!=NULL) 					INTO row_exist;';
+		course_check_command := 'SELECT if EXISTS(SELECT * FROM '||transcript_name||' T, course_offering O where T.off_id=O.id and O.course_id=prereq_row.prereq_id and T.grade!=''F'' and T.grade!=NULL) 					INTO row_exist;';
 		EXECUTE course_check_command;
 		if not row_exist then
 			RAISE EXCEPTION 'prerequiste course % not completed yet',prereq_row.prereq_id;
@@ -204,14 +204,14 @@ BEGIN
 	--cgpa check
 	if offering_row.CGPA!=NULL then
 		if cgpa_calculation(st_id)<offering_row.CGPA then
-			RAISE EXCEPTION 'student's CGPA is less than minimum required CGPA';
+			RAISE EXCEPTION 'CGPA of student is less than minimum required CGPA';
 		end if;
 	end if;
 			
 
 	--credit limit check	
 	if curr_year=student_row.batch then
-		credit_limit := 18.0
+		credit_limit := 18.0;
 	else 
 		prev_year:= curr_year-1;
 		if curr_semester=1 then
@@ -236,7 +236,7 @@ BEGIN
 	EXECUTE credit_calculate_command;
 	
 	select C from courses
-	into course_credt
+	into course_credit
 	where 
 	course_id=offering_row.course_id;
 	
@@ -246,7 +246,7 @@ BEGIN
 		INSERT into enrol(student_id,offering_id) VALUES(off_id,st_id);	
 	end if;
 
-	RETURN NULL;
+	RETURN;
 	
 END;
 $$;
