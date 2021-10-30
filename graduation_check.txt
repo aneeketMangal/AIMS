@@ -41,7 +41,7 @@ begin
         EXIT when not found;
 
         --check if the course is done by the student (and that he/she has passed in the course)
-        row_check_command := 'SELECT if EXISTS(SELECT * FROM ' || transcript_table_name || ' WHERE course_id = ' || curriculum_table_row.course_id || ' and grade <> F) INTO row_exist;';
+        row_check_command := 'SELECT if EXISTS(SELECT * FROM ' || transcript_table_name || ', course_offering O, courses C WHERE C.course_id = ' || curriculum_table_row.course_id || ' and off_id = O.id and O.course_id = C.course_id and grade <> ''F'') INTO row_exist;';
         EXECUTE row_check_command;
 
         --if the above condition is satisfied
@@ -66,7 +66,7 @@ begin
         EXIT when not found;
 
         --check if the course is done by the student (and that he/she has passed in the course)
-        row_check_command := 'SELECT if EXISTS(SELECT * FROM ' || transcript_table_name || ' WHERE course_id = ' || curriculum_table_row.course_id || ' and grade <> F) INTO row_exist;';
+        row_check_command := 'SELECT if EXISTS(SELECT * FROM ' || transcript_table_name || ', course_offering O, courses C WHERE C.course_id = ' || curriculum_table_row.course_id || ' and off_id = O.id and O.course_id = C.course_id and grade <> ''F'') INTO row_exist;';
         EXECUTE row_check_command;
 
         --if the above condition is satisfied
@@ -91,7 +91,7 @@ begin
         EXIT when not found;
 
         --check if the course is done by the student (and that he/she has passed in the course)
-        row_check_command := 'SELECT if EXISTS(SELECT * FROM ' || transcript_table_name || ' WHERE course_id = ' || curriculum_table_row.course_id || ' and grade <> F) INTO row_exist;';
+        row_check_command := 'SELECT if EXISTS(SELECT * FROM ' || transcript_table_name || ', course_offering O, courses C WHERE C.course_id = ' || curriculum_table_row.course_id || ' and off_id = O.id and O.course_id = C.course_id and grade <> ''F'') INTO row_exist;';
         EXECUTE row_check_command;
 
         --if the above condition is satisfied
@@ -116,7 +116,7 @@ begin
         EXIT when not found;
 
         --check if the course is done by the student (and that he/she has passed in the course)
-        row_check_command := 'SELECT if EXISTS(SELECT * FROM ' || transcript_table_name || ' WHERE course_id = ' || curriculum_table_row.course_id || ' and grade <> F) INTO row_exist;';
+        row_check_command := 'SELECT if EXISTS(SELECT * FROM ' || transcript_table_name || ', course_offering O, courses C WHERE C.course_id = ' || curriculum_table_row.course_id || ' and off_id = O.id and O.course_id = C.course_id and grade <> ''F'') INTO row_exist;';
         EXECUTE row_check_command;
 
         --if the above condition is satisfied

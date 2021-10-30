@@ -35,7 +35,7 @@ TO faculty, student;
 CREATE TABLE students(
     id char(11) NOT NULL,
     name varchar(40) NOT NULL,
-    dept varchar(4) NOT NULL,
+    dept char(3) NOT NULL,
     batch INTEGER NOT NULL,
     PRIMARY KEY(id)
 );
@@ -103,7 +103,7 @@ CREATE TABLE enrol(
 
 CREATE TABLE batch_constraint(
     id INTEGER NOT NULL,
-    batch INTEGER NOT NULL,
+    batch char(7) NOT NULL,
     PRIMARY KEY (batch, id)
 );
 
