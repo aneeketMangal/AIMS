@@ -79,7 +79,7 @@ CREATE TABLE batches(
 );
 
 CREATE TABLE course_offering(
-    id SERIAL,
+    id INTEGER,
     course_id char(5) NOT NULL,
     year INTEGER NOT NULL,
     semester INTEGER NOT NULL,
@@ -92,6 +92,14 @@ CREATE TABLE course_offering(
     FOREIGN KEY(insid) REFERENCES instructor(id),
     FOREIGN KEY(slot) REFERENCES timeslots(slot_type)
 );
+
+GRANT ALL 
+ON course_offering
+TO deanoffice,faculty;
+
+GRANT SELECT
+ON course_offering
+TO student;
 
 CREATE TABLE enrol(
     student_id char(11) NOT NULL,
@@ -107,4 +115,11 @@ CREATE TABLE batch_constraint(
     PRIMARY KEY (batch, id)
 );
 
+GRANT ALL ON
+batch_constraint
+TO deanoffice,faculty;
+
+GRANT SELECT ON
+batch_constraint
+TO student;
 

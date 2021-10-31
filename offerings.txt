@@ -21,14 +21,15 @@ BEGIN
     create_table_command := 'CREATE TABLE ' || table_name || ' (';
     create_table_command := create_table_command || ' student_id char(11) NOT NULL,';
     create_table_command := create_table_command || ' grade varchar(2) NOT NULL,';
-    create_table_command := create_table_command || ' PRIMART KEY(student_id);';
+    create_table_command := create_table_command || ' PRIMARY KEY(student_id),';
     create_table_command := create_table_command || ' FOREIGN KEY(student_id) REFERENCES students(id));';
     
     EXECUTE create_table_command;
 
-    grant_permission_command := 'GRANT ALL ON ' || table_name || ' TO deanoffice;';
-
+    grant_permission_command := 'GRANT ALL ON ' || table_name || ' TO deanoffice, _'||NEW.insid||';';
     EXECUTE grant_permission_command;
+
+
     return null;
 END
 $_$
@@ -65,7 +66,7 @@ begin
     if NOT EXISTS (SELECT 1 FROM course_offering c where c.id = offering_id) then
         RAISE EXCEPTION 'Invalid offering id.';
     END if;
-    if ins_id != offering_ins then
+    if ins_id != offering_ins_id then
         RAISE EXCEPTION 'Unauthorised Request.';
     END if;
     open cur; 
@@ -121,13 +122,16 @@ begin
             SELECT 1 FROM course_offering C WHERE 
             C.insid = ins_id and C.semester = $2 and C.year = $3 and C.slot = $5
         ) then
-            INSERT INTO course_offering(course_id, year, semester, insid, slot, classroom, CGPA)
-            VALUES
-            (course_id, year, semester, ins_id, slot, classroom, CGPA);
 
             SELECT count(*)
             INTO offering_id
             FROM course_offering;
+
+            INSERT INTO course_offering(id,course_id, year, semester, insid, slot, classroom, CGPA)
+            VALUES
+            (offering_id,course_id, year, semester, ins_id, slot, classroom, CGPA);
+
+            
             call update_constraint(offering_id, batch_list, true);
         
         --if the course is offered this sem-year    
