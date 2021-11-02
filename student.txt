@@ -1,6 +1,7 @@
 CREATE OR REPLACE FUNCTION add_student()
 	RETURNS TRIGGER
 	LANGUAGE PLPGSQL
+	
 AS $$
 DECLARE
 	st_id students.id%type;
@@ -21,7 +22,7 @@ BEGIN
 	table_name := 'transcript_'||st_id;
 	create_transcript_command := 'CREATE TABLE '||table_name||' (';
 	create_transcript_command := create_transcript_command||'off_id INTEGER NOT NULL,';
-	create_transcript_command := create_transcript_command||'grade INTEGER,';
+	create_transcript_command := create_transcript_command||'grade varchar(2),';
 	create_transcript_command := create_transcript_command||'PRIMARY KEY(off_id),';
 	create_transcript_command := create_transcript_command||'FOREIGN KEY(off_id) REFERENCES course_offering(id)';
 	create_transcript_command := create_transcript_command||');';

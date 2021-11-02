@@ -42,7 +42,7 @@ CREATE TABLE students(
 
 GRANT SELECT 
 ON students
-TO deanoffice,faculty;
+TO deanoffice,faculty,student;
 
 CREATE TABLE instructor(
     id INTEGER NOT NULL,
@@ -108,6 +108,14 @@ CREATE TABLE enrol(
     FOREIGN KEY(student_id) REFERENCES students(id),
     FOREIGN KEY(offering_id) REFERENCES course_offering(id)
 );
+
+GRANT ALL
+ON enrol
+TO deanoffice;
+
+GRANT SELECT
+ON enrol
+TO faculty,student;
 
 CREATE TABLE batch_constraint(
     id INTEGER NOT NULL,

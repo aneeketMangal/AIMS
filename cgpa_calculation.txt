@@ -49,6 +49,8 @@ declare
     total_credits integer := 0;
     get_credits_command text;
 begin
+
+
     transcript_table_name := 'transcript_' || student_id;
 
     --for all courses in the student's transcript
@@ -65,6 +67,10 @@ begin
         grade_points := grade_points + (course_credits * grade_to_points(rec.grade));
         total_credits := total_credits + course_credits;
     end LOOP;
+
+    if total_credits=0 then
+        return 0;
+    end if;
 
     --calculate cgpa
     cgpa := CAST(grade_points AS decimal) / total_credits;
