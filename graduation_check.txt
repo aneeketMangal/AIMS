@@ -56,7 +56,7 @@ begin
     close curriculum_cur;
 
     --if pc_credits is less than required
-    if pc_credits < 67 then
+    if pc_credits < 21 then
         return false;
     END if;
 
@@ -82,7 +82,7 @@ begin
     close curriculum_cur;
 
     --if pe_credits is less than required
-    if pe_credits < 12 then
+    if pe_credits < 4 then
         return false;
     END if;
 
@@ -108,7 +108,7 @@ begin
     close curriculum_cur;
 
     --if sc_credits is less than required
-    if sc_credits < 24 then
+    if sc_credits < 4 then
         return false;
     END if;
 
@@ -134,7 +134,7 @@ begin
     close curriculum_cur;
 
     --if oe_credits is less than required
-    if oe_credits < 42 then
+    if oe_credits < 3 then
         return false;
     END if;
 
