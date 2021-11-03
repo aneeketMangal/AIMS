@@ -41,13 +41,13 @@ begin
         EXIT when not found;
 
         --check if the course is done by the student (and that he/she has passed in the course)
-        row_check_command := 'SELECT EXISTS(SELECT * FROM ' || transcript_table_name || ', course_offering O, courses C WHERE C.course_id = ' || curriculum_table_row.course_id || ' and off_id = O.id and O.course_id = C.course_id and grade <> ''F'');';
+        row_check_command := 'SELECT EXISTS(SELECT * FROM ' || transcript_table_name || ', course_offering O, courses C WHERE C.course_id = ''' || curriculum_table_row.course_id || ''' and off_id = O.id and O.course_id = C.course_id and grade <> ''F'');';
         EXECUTE row_check_command INTO row_exist;
 
         --if the above condition is satisfied
         if row_exist then
             --get the course credits
-            get_credits_command := 'SELECT C FROM courses WHERE course_id = ' || curriculum_table_row.course_id || ';';
+            get_credits_command := 'SELECT C FROM courses WHERE course_id = ''' || curriculum_table_row.course_id || ''';';
             EXECUTE get_credits_command INTO course_credits;
             --update pc_credits
             pc_credits := pc_credits + course_credits;
@@ -67,13 +67,13 @@ begin
         EXIT when not found;
 
         --check if the course is done by the student (and that he/she has passed in the course)
-        row_check_command := 'SELECT EXISTS(SELECT * FROM ' || transcript_table_name || ', course_offering O, courses C WHERE C.course_id = ' || curriculum_table_row.course_id || ' and off_id = O.id and O.course_id = C.course_id and grade <> ''F'');';
+        row_check_command := 'SELECT EXISTS(SELECT * FROM ' || transcript_table_name || ', course_offering O, courses C WHERE C.course_id = ''' || curriculum_table_row.course_id || ''' and off_id = O.id and O.course_id = C.course_id and grade <> ''F'');';
         EXECUTE row_check_command INTO row_exist;
 
         --if the above condition is satisfied
         if row_exist then
             --get the course credits
-            get_credits_command := 'SELECT C FROM courses WHERE course_id = ' || curriculum_table_row.course_id || ';';
+            get_credits_command := 'SELECT C FROM courses WHERE course_id = ''' || curriculum_table_row.course_id || ''';';
             EXECUTE get_credits_command INTO course_credits;
             --update pe_credits
             pe_credits := pe_credits + course_credits;
@@ -93,13 +93,13 @@ begin
         EXIT when not found;
 
         --check if the course is done by the student (and that he/she has passed in the course)
-        row_check_command := 'SELECT EXISTS(SELECT * FROM ' || transcript_table_name || ', course_offering O, courses C WHERE C.course_id = ' || curriculum_table_row.course_id || ' and off_id = O.id and O.course_id = C.course_id and grade <> ''F'');';
+        row_check_command := 'SELECT EXISTS(SELECT * FROM ' || transcript_table_name || ', course_offering O, courses C WHERE C.course_id = ''' || curriculum_table_row.course_id || ''' and off_id = O.id and O.course_id = C.course_id and grade <> ''F'');';
         EXECUTE row_check_command INTO row_exist;
 
         --if the above condition is satisfied
         if row_exist then
             --get the course credits
-            get_credits_command := 'SELECT C FROM courses WHERE course_id = ' || curriculum_table_row.course_id || ';';
+            get_credits_command := 'SELECT C FROM courses WHERE course_id = ''' || curriculum_table_row.course_id || ''';';
             EXECUTE get_credits_command INTO course_credits;
             --update sc_credits
             sc_credits := sc_credits + course_credits;
@@ -119,13 +119,13 @@ begin
         EXIT when not found;
 
         --check if the course is done by the student (and that he/she has passed in the course)
-        row_check_command := 'SELECT EXISTS(SELECT * FROM ' || transcript_table_name || ', course_offering O, courses C WHERE C.course_id = ' || curriculum_table_row.course_id || ' and off_id = O.id and O.course_id = C.course_id and grade <> ''F'');';
+        row_check_command := 'SELECT EXISTS(SELECT * FROM ' || transcript_table_name || ', course_offering O, courses C WHERE C.course_id = ''' || curriculum_table_row.course_id || ''' and off_id = O.id and O.course_id = C.course_id and grade <> ''F'');';
         EXECUTE row_check_command INTO row_exist;
 
         --if the above condition is satisfied
         if row_exist then
             --get the course credits
-            get_credits_command := 'SELECT C FROM courses WHERE course_id = ' || curriculum_table_row.course_id || ';';
+            get_credits_command := 'SELECT C FROM courses WHERE course_id = ''' || curriculum_table_row.course_id || ''';';
             EXECUTE get_credits_command INTO course_credits;
             --update oe_credits
             oe_credits := oe_credits + course_credits;
