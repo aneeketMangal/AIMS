@@ -26,7 +26,7 @@ begin
     --check for authorisation (instructor must have offered the course)
     ins_id := CAST(substr(session_user, 2) AS INTEGER);
     SELECT O.insid INTO offering_ins_id FROM course_offering O WHERE O.id = offering_id;
-    
+
     --If instructor authorised
     if offering_ins_id = ins_id then
         
@@ -57,7 +57,7 @@ begin
 
         grade_table_name := '_'||offering_id||'_grades';
         --IF ENROL TABLE IS NOT DISSOLVED
-        copy_command := 'COPY ' || grade_table_name || ' FROM ''' || path_to_csv || ''' DELIMITER '','' CSV HEADER;';
+        copy_command := '\copy ' || grade_table_name || ' from ''' || path_to_csv || ''' csv header;';
         EXECUTE copy_command;
 
     --If not authorised
