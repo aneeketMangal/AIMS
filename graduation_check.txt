@@ -27,6 +27,7 @@ begin
     --check cgpa >= 5.00
     cgpa := cgpa_calculation(student_id);
     if cgpa < 5.00 then
+        RAISE NOTICE'cgpa=% less than 5',cgpa;
         return false;
     END if;
 
@@ -35,7 +36,7 @@ begin
     transcript_table_name := 'transcript_' || student_id;
 
     --check for program core credits
-    open curriculum_cur FOR EXECUTE 'SELECT * FROM ' || curriculum_table_name || ' WHERE course_type = PC';
+    open curriculum_cur FOR EXECUTE 'SELECT * FROM ' || curriculum_table_name || ' WHERE course_type = ''PC''';
     LOOP
         FETCH curriculum_cur INTO curriculum_table_row;
         EXIT when not found;
@@ -57,11 +58,12 @@ begin
 
     --if pc_credits is less than required
     if pc_credits < 21 then
+        RAISE NOTICE 'PC credits not completed';
         return false;
     END if;
 
     --check for program elective credits
-    open curriculum_cur FOR EXECUTE 'SELECT * FROM ' || curriculum_table_name || ' WHERE course_type = PE';
+    open curriculum_cur FOR EXECUTE 'SELECT * FROM ' || curriculum_table_name || ' WHERE course_type = ''PE''';
     LOOP
         FETCH curriculum_cur INTO curriculum_table_row;
         EXIT when not found;
@@ -83,11 +85,12 @@ begin
 
     --if pe_credits is less than required
     if pe_credits < 4 then
+        RAISE NOTICE 'PE credits not completed';
         return false;
     END if;
 
     --check for science core credits
-    open curriculum_cur FOR EXECUTE 'SELECT * FROM ' || curriculum_table_name || ' WHERE course_type = SC';
+    open curriculum_cur FOR EXECUTE 'SELECT * FROM ' || curriculum_table_name || ' WHERE course_type = ''SC''';
     LOOP
         FETCH curriculum_cur INTO curriculum_table_row;
         EXIT when not found;
@@ -109,11 +112,12 @@ begin
 
     --if sc_credits is less than required
     if sc_credits < 4 then
+        RAISE NOTICE 'SC credits not completed';
         return false;
     END if;
 
     --check for open elective credits
-    open curriculum_cur FOR EXECUTE 'SELECT * FROM ' || curriculum_table_name || ' WHERE course_type = OE';
+    open curriculum_cur FOR EXECUTE 'SELECT * FROM ' || curriculum_table_name || ' WHERE course_type = ''OE''';
     LOOP
         FETCH curriculum_cur INTO curriculum_table_row;
         EXIT when not found;
@@ -135,10 +139,12 @@ begin
 
     --if oe_credits is less than required
     if oe_credits < 3 then
+        RAISE NOTICE 'OE credits not completed';
         return false;
     END if;
 
     --if all conditions are followed, return true
+    RAISE NOTICE 'ALL conditions fulfilled. Ready to graduate';
     return true;
 end;
 $$;

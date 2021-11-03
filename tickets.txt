@@ -27,8 +27,8 @@ ON tickets
 TO deanoffice;
 
 
-CREATE FUNCTION is_faculty(
-    username text;
+CREATE OR REPLACE FUNCTION is_faculty(
+    username text
 )
 RETURNS boolean
 AS $_$
@@ -46,8 +46,8 @@ $_$
 LANGUAGE plpgsql
 SECURITY DEFINER;
 
-CREATE FUNCTION is_student(
-    username text;
+CREATE OR REPLACE FUNCTION is_student(
+    username text
 )
 RETURNS boolean
 AS $_$
@@ -65,8 +65,8 @@ $_$
 LANGUAGE plpgsql
 SECURITY DEFINER;
 
-CREATE FUNCTION is_advisor(
-    username text;
+CREATE OR REPLACE FUNCTION is_advisor(
+    username text
 )
 RETURNS boolean
 AS $_$
@@ -113,7 +113,7 @@ BEGIN
     END if;
 
 
-    temp_query := 'is_advisor(''' || session_user || ''')';
+    temp_query := 'SELECT is_advisor(''' || session_user || ''')';
     EXECUTE temp_query INTO temp_exist;
     if temp_exist then
         ins_id := CAST(substr(session_user, 2) AS INTEGER);
@@ -129,7 +129,7 @@ BEGIN
         END if;
     END if;
 
-    temp_query := 'is_faculty(''' || session_user || ''')';
+    temp_query := 'SELECT is_faculty(''' || session_user || ''')';
     EXECUTE temp_query INTO temp_exist;
     if temp_exist AND NOT is_out then
         ins_id := CAST(substr(session_user, 2) AS INTEGER);
@@ -142,7 +142,7 @@ BEGIN
         END if;
     END if;
 
-    temp_query := 'is_student(''' || session_user || ''')';
+    temp_query := 'SELECT is_student(''' || session_user || ''')';
     EXECUTE temp_query INTO temp_exist;
     if temp_exist AND NOT is_out then
         stu_id := substr(session_user, 2);
