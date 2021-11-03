@@ -113,7 +113,7 @@ BEGIN
     END if;
 
     temp_query := ('SELECT c.insid from course_offering c where c.id = ' || offering_id || ';');
-    EXECUTE temp_query into ins_id
+    EXECUTE temp_query into ins_id;
     table_name := concat('_', ins_id,  '_instructor_tickets');
 
     temp_query := ('SELECT EXISTS(SELECT 1 FROM ' ||table_name || ' t WHERE t.student_id = ' ||stu_id || ' AND t.course_id = ' || offering_id || ');');
@@ -310,4 +310,4 @@ LANGUAGE plpgsql;
 
 GRANT EXECUTE
 ON FUNCTION dean_ticket_response
-TO dean;
+TO deanoffice;
