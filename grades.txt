@@ -55,8 +55,9 @@ begin
         --drop_table_command := 'DROP TABLE ' || temp_table_name || ';';
         --EXECUTE drop_table_command;
 
+        grade_table_name := '_' || offering_id || '_grades';
         --IF ENROL TABLE IS NOT DISSOLVED
-        copy_command := 'COPY ' || grade_table_name || ' FROM ''' || path_to_csv || ''' DELIMITER '','' CSV HEADER;';
+        copy_command := '\copy ' || grade_table_name || ' from ''' || path_to_csv || ''' csv header;';
         EXECUTE copy_command;
 
     --If not authorised
