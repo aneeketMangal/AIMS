@@ -289,6 +289,7 @@ DECLARE
     update_command text;
     temp_query text;
     temp_exist boolean;
+    temp_record record;
 BEGIN
     temp_query := 'SELECT EXISTS(SELECT 1 FROM tickets t where t.id = ' || ticket_id || ');';
     EXECUTE temp_query into temp_exist;
@@ -298,6 +299,10 @@ BEGIN
 
     if (response) then
         update_command := 'UPDATE tickets SET tickets.dean_ap = 2 WHERE tickets.id = ' || ticket_id || ';';
+        temp_query := 'SELECT t.student_id, t.course_id FROM tickets t WHERE t.id = ' || ticket_id || ';';
+        EXECUTE temp_query INTO temp_record;
+        temp_query := 'INSERT INTO enrol VALUES(' || temp_record || ');';
+        EXECUTE temp_query;
     else
         update_command := 'UPDATE tickets SET tickets.dean_ap = 1 WHERE tickets.id = ' || ticket_id || ';';
     END if;
