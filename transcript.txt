@@ -9,14 +9,14 @@
 
 CREATE OR REPLACE PROCEDURE transcript_generation
 (
-    semester integer,
-    year integer
+    sem integer,
+    ye integer
 )
 LANGUAGE plpgsql
 AS $$
 declare
     --cursor for offerings in the given semester and year
-    offering_cursor CURSOR FOR (SELECT * FROM course_offering O WHERE O.semester = semester and O.year = year);
+    offering_cursor CURSOR FOR (SELECT * FROM course_offering O WHERE O.semester = sem and O.year = ye);
     grade_table_cursor REFCURSOR;
     offering_table_row record;
     grade_table_name text;
@@ -30,7 +30,7 @@ begin
         EXIT when not found;
 
         --GRADE TABLE NAME TO BE ADDED
-        grade_table_name = concat('_',offering_table_row.id,'_grades');
+        grade_table_name = ;
 
         --open grade table cursor
         open grade_table_cursor FOR EXECUTE 'SELECT student_id, grade FROM ' || grade_table_name;
@@ -49,3 +49,7 @@ begin
     end LOOP;
 end;
 $$;
+
+GRANT EXECUTE
+ON PROCEDURE transcript_generation
+TO deanoffice;
