@@ -10,7 +10,7 @@
 -- ticket history
 CREATE TABLE tickets(
     id INTEGER NOT NULL,
-    student_id integer NOT NULL,
+    student_id char(11) NOT NULL,
     course_id integer NOT NULL,
     faculty_ap integer NOT NULL,
     advisor_ap integer NOT NULL, 
@@ -26,7 +26,7 @@ RETURNS record
 AS $_$
 DECLARE
     create_table_command text;
-    stu_id integer;
+    stu_id char(11);
     out_record record;
     temp_query text;
     temp_exist boolean;
@@ -39,7 +39,7 @@ BEGIN
     END if;
 
     stu_id := substr(session_user, 2);
-    temp_query := 'SELECT EXISTS(SELECT 1 FROM tickets t WHERE t.id = ' || ticket_id || ' AND t.student_id = ' || stu_id ||');';
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM tickets t WHERE t.id = ' || ticket_id || ' AND t.student_id = ''' || stu_id ||''');';
     EXECUTE temp_query INTO temp_exist;
     if NOT temp_exist then
         RAISE EXCEPTION 'Unauthorised action.';
@@ -97,7 +97,7 @@ CREATE OR REPLACE FUNCTION raise_ticket(
 RETURNS void
 AS $_$
 DECLARE
-    stu_id integer;
+    stu_id char(11);
     table_name text;
     ins_id integer;
     insert_command text;
@@ -116,16 +116,16 @@ BEGIN
     EXECUTE temp_query into ins_id;
     table_name := concat('_', ins_id,  '_instructor_tickets');
 
-    temp_query := ('SELECT EXISTS(SELECT 1 FROM ' ||table_name || ' t WHERE t.student_id = ' ||stu_id || ' AND t.course_id = ' || offering_id || ');');
+    temp_query := ('SELECT EXISTS(SELECT 1 FROM ' ||table_name || ' t WHERE t.student_id = ''' ||stu_id || ''' AND t.course_id = ' || offering_id || ');');
     EXECUTE temp_query INTO temp_exist;
     if temp_exist then
         RAISE EXCEPTION 'Ticket already raised';
     END if;
 
     ticket_id := (SELECT COUNT(*) from tickets);
-    insert_command := 'INSERT INTO tickets VALUES ('  || ticket_id || ',' || stu_id || ',' || offering_id || ', 0, 0, 0)';
+    insert_command := 'INSERT INTO tickets VALUES ('  || ticket_id || ',''' || stu_id || ''',' || offering_id || ', 0, 0, 0)';
     EXECUTE insert_command;
-    insert_command := 'INSERT INTO ' || table_name || ' VALUES (' ||ticket_id || ',' || stu_id || ',' || offering_id || ');' ;
+    insert_command := 'INSERT INTO ' || table_name || ' VALUES (' ||ticket_id || ',''' || stu_id || ''',' || offering_id || ');' ;
     EXECUTE insert_command;
 
 END
