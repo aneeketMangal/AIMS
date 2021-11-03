@@ -57,7 +57,7 @@ begin
 
         grade_table_name := '_'||offering_id||'_grades';
         --IF ENROL TABLE IS NOT DISSOLVED
-        copy_command := '\copy ' || grade_table_name || ' from ''' || path_to_csv || ''' csv header;';
+        copy_command := 'copy ' || grade_table_name || ' from ''' || path_to_csv || ''' csv header;';
         EXECUTE copy_command;
 
     --If not authorised

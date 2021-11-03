@@ -49,3 +49,7 @@ begin
     end LOOP;
 end;
 $$;
+
+GRANT EXECUTE
+ON PROCEDURE transcript_generation
+TO deanoffice;
