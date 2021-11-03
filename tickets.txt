@@ -26,7 +26,66 @@ GRANT ALL
 ON tickets
 TO deanoffice;
 
--- view student's ticket
+
+CREATE FUNCTION is_faculty(
+    username text;
+)
+RETURNS boolean
+AS $_$
+DECLARE
+    temp_query text;
+    output boolean;
+    temp_var int;
+BEGIN
+    temp_var := CAST(substr(username, 2) AS INTEGER);
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM instructor WHERE instructor.id = '|| username ||';'; 
+    EXECUTE temp_query INTO output;
+    RETURN output;
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+CREATE FUNCTION is_student(
+    username text;
+)
+RETURNS boolean
+AS $_$
+DECLARE
+    temp_query text;
+    output boolean;
+    temp_var text;
+BEGIN
+    temp_var := substr(username, 2)
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM students WHERE students.id = '''|| username ||''';'; 
+    EXECUTE temp_query INTO output;
+    RETURN output;
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+CREATE FUNCTION is_advisor(
+    username text;
+)
+RETURNS boolean
+AS $_$
+DECLARE
+    temp_query text;
+    output boolean;
+    temp_var int;
+BEGIN
+    temp_var := CAST(substr(username, 2) AS INTEGER);
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM batches WHERE batches.adv_id = '|| username ||';'; 
+    EXECUTE temp_query INTO output;
+    RETURN output;
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+
+
 CREATE OR REPLACE FUNCTION view_ticket_status(
     ticket_id int
 )
@@ -35,19 +94,77 @@ AS $_$
 DECLARE
     create_table_command text;
     stu_id char(11);
+    ins_id integer;
     out_record record;
     temp_query text;
     temp_exist boolean;
+    temp_exist_two boolean;
+    temp_var text;
+    is_out boolean;
+    batch_ char;
 BEGIN
+    is_out := False;
     temp_query := 'SELECT EXISTS(SELECT 1 from tickets t where t.id = ' || ticket_id || ');';
     EXECUTE temp_query INTO temp_exist;
 
     if NOT temp_exist then
         RAISE EXCEPTION 'Invalid ticket ID';
+        RETURN NULL;
     END if;
 
-    temp_query := 'SELECT offering_id, faculty_ap, advisor_ap, dean_ap FROM tickets WHERE tickets.id = ' || ticket_id || ';';
-    EXECUTE temp_query into out_record;
+
+    temp_query := 'is_advisor(''' || session_user || ''')';
+    EXECUTE temp_query INTO temp_exist;
+    if temp_exist then
+        ins_id := CAST(substr(session_user, 2) AS INTEGER);
+        temp_query := '(SELECT t.student_id FROM tickets t WHERE t.id = ' || ticket_id || ');';
+        EXECUTE temp_query INTO stu_id;
+        batch_ := substr(stu_id, 2, 7);
+        temp_query := 'SELECT EXISTS(SELECT 1 FROM batches b WHERE b.batch = ''' || batch || ''' AND b.adv_id = '|| ins_id || ');';
+        EXECUTE temp_query INTO temp_exist_two;
+        if temp_exist_two then
+            is_out := True;
+            temp_query := 'SELECT offering_id, faculty_ap, advisor_ap, dean_ap FROM tickets WHERE tickets.id = ' || ticket_id || ';';
+            EXECUTE temp_query into out_record;
+        END if;
+    END if;
+
+    temp_query := 'is_faculty(''' || session_user || ''')';
+    EXECUTE temp_query INTO temp_exist;
+    if temp_exist AND NOT is_out then
+        ins_id := CAST(substr(session_user, 2) AS INTEGER);
+        temp_query := 'SELECT EXISTS(SELECT 1 FROM tickets t, course_offering c WHERE t.id = ' || ticket_id || ' AND c.id = t.offering_id AND c.insid = '|| ins_id||');';
+        EXECUTE temp_query INTO temp_exist_two;
+        if temp_exist_two then
+            is_out := True;
+            temp_query := 'SELECT offering_id, faculty_ap, advisor_ap, dean_ap FROM tickets WHERE tickets.id = ' || ticket_id || ';';
+            EXECUTE temp_query into out_record;
+        END if;
+    END if;
+
+    temp_query := 'is_student(''' || session_user || ''')';
+    EXECUTE temp_query INTO temp_exist;
+    if temp_exist AND NOT is_out then
+        stu_id := substr(session_user, 2);
+        temp_query := 'SELECT EXISTS(SELECT 1 FROM tickets t WHERE t.id = ' || ticket_id || ' AND t.student_id = ''' || stu_id ||''');';
+        EXECUTE temp_query INTO temp_exist_two;
+        if temp_exist_two then
+            is_out := True;
+            temp_query := 'SELECT offering_id, faculty_ap, advisor_ap, dean_ap FROM tickets WHERE tickets.id = ' || ticket_id || ';';
+            EXECUTE temp_query into out_record;
+        END if;
+    END if;
+
+    if session_user = 'deanoffice' then
+        is_out := True;
+        temp_query := 'SELECT offering_id, faculty_ap, advisor_ap, dean_ap FROM tickets WHERE tickets.id = ' || ticket_id || ';';
+        EXECUTE temp_query into out_record;
+    END if;
+
+    if NOT is_out then
+        RAISE NOTICE 'Unauthorised Action';
+        RETURN NULL;
+    END if;
     RETURN out_record;
 END
 $_$
@@ -324,3 +441,4 @@ LANGUAGE plpgsql;
 GRANT EXECUTE
 ON FUNCTION dean_ticket_response
 TO deanoffice;
+
