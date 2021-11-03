@@ -18,6 +18,14 @@ CREATE TABLE tickets(
     PRIMARY KEY(id)
 );
 
+GRANT SELECT
+ON tickets
+TO faculty,student;
+
+GRANT ALL
+ON tickets
+TO deanoffice;
+
 -- view student's ticket
 CREATE OR REPLACE FUNCTION view_ticket_status(
     ticket_id int
@@ -38,13 +46,6 @@ BEGIN
         RAISE EXCEPTION 'Invalid ticket ID';
     END if;
 
-    stu_id := substr(session_user, 2);
-    temp_query := 'SELECT EXISTS(SELECT 1 FROM tickets t WHERE t.id = ' || ticket_id || ' AND t.student_id = ''' || stu_id ||''');';
-    EXECUTE temp_query INTO temp_exist;
-    if NOT temp_exist then
-        RAISE EXCEPTION 'Unauthorised action.';
-    END if;
-
     temp_query := 'SELECT offering_id, faculty_ap, advisor_ap, dean_ap FROM tickets WHERE tickets.id = ' || ticket_id || ';';
     EXECUTE temp_query into out_record;
     RETURN out_record;
@@ -55,7 +56,7 @@ SECURITY DEFINER;
 
 GRANT EXECUTE
 ON FUNCTION view_ticket_status
-TO student;
+TO student,faculty;
 
 
 --general ticket table template
@@ -127,6 +128,7 @@ BEGIN
     EXECUTE insert_command;
     insert_command := 'INSERT INTO ' || table_name || ' VALUES (' ||ticket_id || ',''' || stu_id || ''',' || offering_id || ');' ;
     EXECUTE insert_command;
+    RAISE NOTICE'Your ticket id is %',ticket_id;
 
 END
 $_$
@@ -148,9 +150,12 @@ AS $_$
 DECLARE
     temp_query text;
 BEGIN
+    --RAISE NOTICE '% %',table_from,table_to;
     temp_query := 'INSERT INTO ' || table_to || ' SELECT * FROM ' || table_from || ' tf WHERE tf.id = ' || ticket_id || ';';
+    --RAISE NOTICE '%',temp_query;
     EXECUTE temp_query;
     temp_query := 'DELETE FROM ' || table_from || ' tf WHERE tf.id  = ' || ticket_id || ';';
+    --RAISE NOTICE '%',temp_query;
     EXECUTE temp_query;
 END
 $_$
@@ -171,6 +176,7 @@ AS $_$
 DECLARE
     table_name text;
     department text;
+    batch integer;
     adv_table_name text;
     ins_id integer;
     update_command text;
@@ -188,7 +194,7 @@ BEGIN
     END if;
 
 
-    temp_query := 'SELECT EXISTS(SELECT 1 FROM ' || table_name ||  't where t.id = ' || ticket_id || ');';
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM ' || table_name ||  ' t where t.id = ' || ticket_id || ');';
     EXECUTE temp_query into temp_exist;
     if NOT temp_exist then
         RAISE EXCEPTION 'Unauthorized Request';
@@ -197,17 +203,19 @@ BEGIN
    
 
     if (response) then
-        update_command := 'UPDATE tickets set tickets.faculty_ap = 2 WHERE tickets.id = ticket_id;';
-        temp_query := 'SELECT st.batch FROM students st WHERE st.id = (SELECT ti.student_id FROM ' 
-        || table_name || ' ti WHERE ti.id = ' || ticket_id || ');';
-        EXECUTE temp_query into department;
-        adv_table_name := concat('_', department,  '_advisor_tickets');
+        update_command := 'UPDATE tickets set faculty_ap = 2 WHERE id ='||ticket_id||';';
         EXECUTE update_command;
-        EXECUTE propagate(table_name, adv_table_name);
+        
     else
-        update_command := 'UPDATE tickets set tickets.faculty_ap = 1 WHERE tickets.id = ticket_id;';
+        update_command := 'UPDATE tickets set faculty_ap = 1 WHERE id ='||ticket_id||';';
         EXECUTE update_command;
     END if;
+    temp_query := 'SELECT st.batch,st.dept FROM students st WHERE st.id = (SELECT ti.student_id FROM ' 
+        || table_name || ' ti WHERE ti.id = ' || ticket_id || ');';
+    EXECUTE temp_query into batch,department;
+    adv_table_name := concat('_', CAST(batch as text),department,  '_advisor_tickets');
+    EXECUTE propagate(ticket_id,table_name, adv_table_name);
+
 END
 $_$
 LANGUAGE plpgsql
@@ -219,7 +227,7 @@ TO faculty;
 
 
 --advisor ticket response function
-CREATE OR REPLACE FUNCTION instructor_ticket_response(
+CREATE OR REPLACE FUNCTION advisor_ticket_response(
     ticket_id integer,
     response boolean
 )
@@ -252,20 +260,20 @@ BEGIN
     END if;
 
 
-    temp_query := 'SELECT EXISTS(SELECT 1 FROM ' || table_name ||  't where t.id = ' || ticket_id || ');';
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM ' || table_name ||  ' t where t.id = ' || ticket_id || ');';
     EXECUTE temp_query into temp_exist;
     if NOT temp_exist then
         RAISE EXCEPTION 'Unauthorized Request';
     END if;
 
     if (response) then
-        update_command := 'UPDATE tickets SET tickets.advisor_ap = 2 WHERE tickets.id = ' || ticket_id || ';';
+        update_command := 'UPDATE tickets SET advisor_ap = 2 WHERE id = ' || ticket_id || ';';
         EXECUTE update_command;
-        EXECUTE propagate(table_name, _dean_tickets);
     else
-        update_command := 'UPDATE tickets SET tickets.advisor_ap = 1 WHERE tickets.id = ' || ticket_id || ';';
+        update_command := 'UPDATE tickets SET advisor_ap = 1 WHERE id = ' || ticket_id || ';';
         EXECUTE update_command;
     END if;
+    EXECUTE propagate(ticket_id,table_name, 'dean_tickets');
 END
 $_$
 LANGUAGE plpgsql
@@ -298,13 +306,13 @@ BEGIN
     END if;
 
     if (response) then
-        update_command := 'UPDATE tickets SET tickets.dean_ap = 2 WHERE tickets.id = ' || ticket_id || ';';
+        update_command := 'UPDATE tickets SET dean_ap = 2 WHERE id = ' || ticket_id || ';';
         temp_query := 'SELECT t.student_id, t.offering_id FROM tickets t WHERE t.id = ' || ticket_id || ';';
         EXECUTE temp_query INTO temp_record;
-        temp_query := 'INSERT INTO enrol VALUES(' || temp_record || ');';
+        temp_query := 'INSERT INTO enrol VALUES(''' || temp_record.student_id ||''','||temp_record.offering_id|| ');';
         EXECUTE temp_query;
     else
-        update_command := 'UPDATE tickets SET tickets.dean_ap = 1 WHERE tickets.id = ' || ticket_id || ';';
+        update_command := 'UPDATE tickets SET dean_ap = 1 WHERE id = ' || ticket_id || ';';
     END if;
     EXECUTE update_command;
     DELETE FROM dean_tickets WHERE dean_tickets.id = ticket_id;
