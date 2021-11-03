@@ -11,7 +11,7 @@
 CREATE TABLE tickets(
     id INTEGER NOT NULL,
     student_id char(11) NOT NULL,
-    course_id integer NOT NULL,
+    offering_id integer NOT NULL,
     faculty_ap integer NOT NULL,
     advisor_ap integer NOT NULL, 
     dean_ap integer NOT NULL,
@@ -45,7 +45,7 @@ BEGIN
         RAISE EXCEPTION 'Unauthorised action.';
     END if;
 
-    temp_query := 'SELECT course_id, faculty_ap, advisor_ap, dean_ap FROM tickets WHERE tickets.id = ' || ticket_id || ';';
+    temp_query := 'SELECT offering_id, faculty_ap, advisor_ap, dean_ap FROM tickets WHERE tickets.id = ' || ticket_id || ';';
     EXECUTE temp_query into out_record;
     RETURN out_record;
 END
@@ -71,11 +71,11 @@ BEGIN
 
     create_table_command := create_table_command || ' id INTEGER NOT NULL,';
     create_table_command := create_table_command || ' student_id char(11) NOT NULL,';
-    create_table_command := create_table_command || ' course_id INTEGER NOT NULL,';
+    create_table_command := create_table_command || ' offering_id INTEGER NOT NULL,';
     create_table_command := create_table_command || ' PRIMARY KEY(id),';
     create_table_command := create_table_command || ' FOREIGN KEY(id) REFERENCES tickets(id),';
     create_table_command := create_table_command || ' FOREIGN KEY(student_id) REFERENCES students(id),';
-    create_table_command := create_table_command || ' FOREIGN KEY(course_id) REFERENCES course_offering(id));';
+    create_table_command := create_table_command || ' FOREIGN KEY(offering_id) REFERENCES course_offering(id));';
     EXECUTE create_table_command;
 END
 $_$
@@ -116,7 +116,7 @@ BEGIN
     EXECUTE temp_query into ins_id;
     table_name := concat('_', ins_id,  '_instructor_tickets');
 
-    temp_query := ('SELECT EXISTS(SELECT 1 FROM ' ||table_name || ' t WHERE t.student_id = ''' ||stu_id || ''' AND t.course_id = ' || offering_id || ');');
+    temp_query := ('SELECT EXISTS(SELECT 1 FROM ' ||table_name || ' t WHERE t.student_id = ''' ||stu_id || ''' AND t.offering_id = ' || offering_id || ');');
     EXECUTE temp_query INTO temp_exist;
     if temp_exist then
         RAISE EXCEPTION 'Ticket already raised';
@@ -299,7 +299,7 @@ BEGIN
 
     if (response) then
         update_command := 'UPDATE tickets SET tickets.dean_ap = 2 WHERE tickets.id = ' || ticket_id || ';';
-        temp_query := 'SELECT t.student_id, t.course_id FROM tickets t WHERE t.id = ' || ticket_id || ';';
+        temp_query := 'SELECT t.student_id, t.offering_id FROM tickets t WHERE t.id = ' || ticket_id || ';';
         EXECUTE temp_query INTO temp_record;
         temp_query := 'INSERT INTO enrol VALUES(' || temp_record || ');';
         EXECUTE temp_query;
