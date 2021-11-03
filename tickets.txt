@@ -9,7 +9,7 @@
 
 -- ticket history
 CREATE TABLE tickets(
-    id SERIAL NOT NULL,
+    id INTEGER NOT NULL,
     student_id integer NOT NULL,
     course_id integer NOT NULL,
     faculty_ap integer NOT NULL,
@@ -27,21 +27,27 @@ AS $_$
 DECLARE
     create_table_command text;
     stu_id integer;
-    out record;
+    out_record record;
+    temp_query text;
+    temp_exist boolean;
 BEGIN
-    if NOT EXISTS(SELECT 1 from tickets t where t.id = ticket_id) then
+    temp_query := 'SELECT EXISTS(SELECT 1 from tickets t where t.id = ' || ticket_id || ');';
+    EXECUTE temp_query INTO temp_exist;
+
+    if NOT temp_exist then
         RAISE EXCEPTION 'Invalid ticket ID';
     END if;
 
-    stu_id := CAST(substr(user, 2) AS INTEGER);
-    if NOT EXISTS(SELECT 1 FROM tickets t WHERE t.id = ticket_id AND t.student_id = stu_id) then
+    stu_id := substr(session_user, 2);
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM tickets t WHERE t.id = ' || ticket_id || ' AND t.student_id = ' || stu_id ||');';
+    EXECUTE temp_query INTO temp_exist;
+    if NOT temp_exist then
         RAISE EXCEPTION 'Unauthorised action.';
     END if;
 
-    SELECT course_id, faculty_ap, advisor_ap, dean_ap
-    INTO out 
-    FROM tickets
-    WHERE tickets.id = tickets_id;
+    temp_query := 'SELECT course_id, faculty_ap, advisor_ap, dean_ap FROM tickets WHERE tickets.id = ' || ticket_id || ';';
+    EXECUTE temp_query into out_record;
+    RETURN out_record;
 END
 $_$
 LANGUAGE plpgsql
@@ -96,21 +102,30 @@ DECLARE
     ins_id integer;
     insert_command text;
     ticket_id integer;
+    temp_query text;
+    temp_exist boolean;
 BEGIN
-    stu_id := substr(user, 2);
-    
-    ins_id := (SELECT c.insid from course_offering c where c.id = $1);
-    table_name := concat('_', ins_id,  '_instructor_tickets');
-
-    if EXISTS(SELECT 1 FROM table_name t where t.student_id = stu_id AND t.course_id = $1) then
-        RAISE EXCEPTION 'Ticket already raised';
-        RETURN;
+    stu_id := substr(session_user, 2);
+    temp_query := ('SELECT EXISTS(SELECT 1 FROM course_offering c where c.id = ' || offering_id || ');');
+    EXECUTE temp_query INTO temp_exist;
+    if NOT temp_exist then
+        RAISE EXCEPTION 'Offering not found';
     END if;
 
-    ticket_id := (SELECT COUNT(*)+1 from tickets);
-    insert_command := 'INSERT INTO ' || table_name || ' VALUES(id, student_id, course_id) VALUES (' ||ticket_id || ',' || stu_id || ',' || $1 || ');' ;
+    temp_query := ('SELECT c.insid from course_offering c where c.id = ' || offering_id || ';');
+    EXECUTE temp_query into ins_id
+    table_name := concat('_', ins_id,  '_instructor_tickets');
+
+    temp_query := ('SELECT EXISTS(SELECT 1 FROM ' ||table_name || ' t WHERE t.student_id = ' ||stu_id || ' AND t.course_id = ' || offering_id || ');');
+    EXECUTE temp_query INTO temp_exist;
+    if temp_exist then
+        RAISE EXCEPTION 'Ticket already raised';
+    END if;
+
+    ticket_id := (SELECT COUNT(*) from tickets);
+    insert_command := 'INSERT INTO tickets VALUES ('  || ticket_id || ',' || stu_id || ',' || offering_id || ', 0, 0, 0)';
     EXECUTE insert_command;
-    insert_command := 'INSERT INTO tickets(student_id, course_id, faculty_ap, advisor_ap, dean_ap) VALUES (' || stu_id || ',' || $1 || ', 0, 0, 0)';
+    insert_command := 'INSERT INTO ' || table_name || ' VALUES (' ||ticket_id || ',' || stu_id || ',' || offering_id || ');' ;
     EXECUTE insert_command;
 
 END
@@ -131,16 +146,12 @@ CREATE OR REPLACE FUNCTION propagate(
 RETURNS void
 AS $_$
 DECLARE
-
+    temp_query text;
 BEGIN
-
-    INSERT INTO table_to(id, student_id, course_id)
-    SELECT tf.id, tf.student_id, tf.course_id
-    FROM table_from tf WHERE tf.id = ticket_id;
-
-    DELETE FROM table_from tf
-    WHERE tf.id  = ticket_id;
-
+    temp_query := 'INSERT INTO ' || table_to || ' SELECT * FROM ' || table_from || ' tf WHERE tf.id = ' || ticket_id || ';';
+    EXECUTE temp_query;
+    temp_query := 'DELETE FROM ' || table_from || ' tf WHERE tf.id  = ' || ticket_id || ';';
+    EXECUTE temp_query;
 END
 $_$
 LANGUAGE plpgsql
@@ -164,27 +175,32 @@ DECLARE
     ins_id integer;
     update_command text;
     delete_command text;
+    temp_query text;
+    temp_exist boolean;
 BEGIN
-    ins_id := CAST(substr(user, 2) AS INTEGER);
+    ins_id := CAST(substr(session_user, 2) AS INTEGER);
     table_name := concat('_', ins_id,  '_instructor_tickets');
 
-    if NOT EXISTS (SELECT 1 FROM tickets t where t.id = ticket_id) then
-        RAISE EXCEPTION 'invalid ticket id';
-        RETURN;
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM tickets t where t.id = ' || ticket_id || ');';
+    EXECUTE temp_query into temp_exist;
+    if NOT temp_exist then
+        RAISE EXCEPTION 'Invalid ticket ID';
     END if;
 
 
-    if NOT EXISTS (SELECT 1 FROM table_name t where t.id = ticket_id) then
-        RAISE EXCEPTION 'Unauthorised Request.';
-        RETURN;
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM ' || table_name ||  't where t.id = ' || ticket_id || ');';
+    EXECUTE temp_query into temp_exist;
+    if NOT temp_exist then
+        RAISE EXCEPTION 'Unauthorized Request';
     END if;
+
+   
 
     if (response) then
         update_command := 'UPDATE tickets set tickets.faculty_ap = 2 WHERE tickets.id = ticket_id;';
-        department := (
-            SELECT st.batch
-            FROM students st
-            WHERE st.id = (SELECT ti.student_id from table_name ti where ti.id = ticket_id));
+        temp_query := 'SELECT st.batch FROM students st WHERE st.id = (SELECT ti.student_id FROM ' 
+        || table_name || ' ti WHERE ti.id = ' || ticket_id || ');';
+        EXECUTE temp_query into department;
         adv_table_name := concat('_', department,  '_advisor_tickets');
         EXECUTE update_command;
         EXECUTE propagate(table_name, adv_table_name);
@@ -202,9 +218,8 @@ ON FUNCTION instructor_ticket_response
 TO faculty;
 
 
-
--- advisor ticket response
-CREATE OR REPLACE FUNCTION advisor_ticket_response(
+--advisor ticket response function
+CREATE OR REPLACE FUNCTION instructor_ticket_response(
     ticket_id integer,
     response boolean
 )
@@ -216,41 +231,52 @@ DECLARE
     ins_id integer;
     update_command text;
     delete_command text;
+    temp_query text;
+    temp_exist boolean;
 BEGIN
-    ins_id := CAST(substr(user, 2) AS INTEGER);
-    if NOT EXISTS(SELECT 1 from batches b WHERE b.adv_id = ins_id) then
-        RAISE EXCEPTION 'unauthorised access';
-        RETURN;
+    ins_id := CAST(substr(session_user, 2) AS INTEGER);
+    temp_query := 'SELECT 1 from batches b WHERE b.adv_id = ' || ins_id || ';';
+    EXECUTE temp_query INTO temp_exist;
+    if NOT temp_exist then
+        RAISE EXCEPTION 'Unauthorised Access';
     END if;
 
-    batch_ := (SELECT b.batch from batches b WHERE b.adv_id = ins_id);
+    temp_query := '(SELECT b.batch from batches b WHERE b.adv_id = ' || ins_id || ');';
+    EXECUTE temp_query INTO batch_;
     table_name := concat('_', batch_,  '_advisor_tickets');
 
-    if NOT EXISTS (SELECT 1 FROM tickets t where t.id = ticket_id) then
-        RAISE EXCEPTION 'invalid ticket id';
-        RETURN;
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM tickets t where t.id = ' || ticket_id || ');';
+    EXECUTE temp_query into temp_exist;
+    if NOT temp_exist then
+        RAISE EXCEPTION 'Invalid ticket ID';
     END if;
 
 
-    if NOT EXISTS (SELECT 1 FROM table_name t where t.id = ticket_id) then
-        RAISE EXCEPTION 'ticket access unauthorised';
-        RETURN;
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM ' || table_name ||  't where t.id = ' || ticket_id || ');';
+    EXECUTE temp_query into temp_exist;
+    if NOT temp_exist then
+        RAISE EXCEPTION 'Unauthorized Request';
     END if;
 
     if (response) then
-        update_command := 'UPDATE tickets set tickets.advisor_ap = 2 WHERE tickets.id = ticket_id;';
+        update_command := 'UPDATE tickets SET tickets.advisor_ap = 2 WHERE tickets.id = ' || ticket_id || ';';
         EXECUTE update_command;
         EXECUTE propagate(table_name, _dean_tickets);
     else
-        update_command := 'UPDATE tickets set tickets.advisor_ap = 1 WHERE tickets.id = ticket_id;';
+        update_command := 'UPDATE tickets SET tickets.advisor_ap = 1 WHERE tickets.id = ' || ticket_id || ';';
         EXECUTE update_command;
     END if;
-    RETURN;
 END
 $_$
 LANGUAGE plpgsql
 SECURITY DEFINER;
 
+-- to be changed if we want to make a advisor group
+GRANT EXECUTE
+ON FUNCTION advisor_ticket_response
+TO faculty;
+
+-- to be decided if ki dean_tickets wali table rakhni hai kya
 
 CREATE OR REPLACE FUNCTION dean_ticket_response(
     ticket_id integer,
@@ -260,13 +286,20 @@ RETURNS void
 AS $_$
 DECLARE
     table_name text;
-    batch_ text;
     update_command text;
+    temp_query text;
+    temp_exist boolean;
 BEGIN
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM tickets t where t.id = ' || ticket_id || ');';
+    EXECUTE temp_query into temp_exist;
+    if NOT temp_exist then
+        RAISE EXCEPTION 'Invalid ticket ID';
+    END if;
+
     if (response) then
-        update_command := 'UPDATE tickets set tickets.dean_ap = 2 WHERE tickets.id = ticket_id;';
+        update_command := 'UPDATE tickets SET tickets.dean_ap = 2 WHERE tickets.id = ' || ticket_id || ';';
     else
-        update_command := 'UPDATE tickets set tickets.advisor_ap = 1 WHERE tickets.id = ticket_id;';
+        update_command := 'UPDATE tickets SET tickets.dean_ap = 1 WHERE tickets.id = ' || ticket_id || ';';
     END if;
     EXECUTE update_command;
     DELETE FROM dean_tickets WHERE dean_tickets.id = ticket_id;
@@ -274,3 +307,7 @@ BEGIN
 END
 $_$
 LANGUAGE plpgsql;
+
+GRANT EXECUTE
+ON FUNCTION dean_ticket_response
+TO dean;
