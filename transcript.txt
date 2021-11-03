@@ -23,6 +23,7 @@ declare
     grade_table_row record;
     transcript_table_name text;
     transcript_entry_command text;
+    temp_command text;
 begin
     open offering_cursor;
     LOOP
@@ -33,7 +34,8 @@ begin
         grade_table_name = '_'||offering_table_row.id||'_grades';
 
         --open grade table cursor
-        open grade_table_cursor FOR EXECUTE 'SELECT student_id, grade FROM ' || grade_table_name;
+        temp_command := 'SELECT student_id, grade FROM ' || grade_table_name || ';';
+        open grade_table_cursor FOR EXECUTE temp_command;
         LOOP
             FETCH grade_table_cursor INTO grade_table_row;
             EXIT when not found;
