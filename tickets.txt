@@ -328,7 +328,7 @@ BEGIN
     EXECUTE temp_query into ins_id;
     table_name := concat('_', ins_id,  '_instructor_tickets');
 
-    temp_query := ('SELECT EXISTS(SELECT 1 FROM ' ||table_name || ' t WHERE t.student_id = ''' ||stu_id || ''' AND t.offering_id = ' || offering_id || ');');
+    temp_query := ('SELECT EXISTS(SELECT 1 FROM tickets t WHERE t.student_id = ''' ||stu_id || ''' AND t.offering_id = ' || offering_id || ');');
     EXECUTE temp_query INTO temp_exist;
     if temp_exist then
         RAISE EXCEPTION 'Ticket already raised';
@@ -410,8 +410,6 @@ BEGIN
     if NOT temp_exist then
         RAISE EXCEPTION 'Unauthorized Request';
     END if;
-
-   
 
     if (response) then
         update_command := 'UPDATE tickets set faculty_ap = 2 WHERE id ='||ticket_id||';';
