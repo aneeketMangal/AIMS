@@ -37,7 +37,7 @@ BEGIN
 		ifUser := true;
 	end if;	
 	
-	if user = 'deanoffice' then
+	if session_user = 'deanoffice' then
 		ifUser	:= true;
 	end if;
 
@@ -100,7 +100,7 @@ BEGIN
 		FETCH prereq_cursor INTO prereq_row;
 		EXIT when not found;
 		
-		course_check_command := 'SELECT EXISTS(SELECT * FROM '||transcript_name||' T, course_offering O where T.off_id=O.id and O.course_id='''||prereq_row.prereq_id||''' and T.grade!=''F'' and T.grade!=NULL) ;';
+		course_check_command := 'SELECT EXISTS(SELECT * FROM '||transcript_name||' T, course_offering O where T.off_id=O.id and O.course_id='''||prereq_row.prereq_id||''' and T.grade!=''F'') ;';
 		EXECUTE course_check_command INTO row_exist;
 		if not row_exist then
 			RAISE EXCEPTION 'prerequiste course % not completed yet',prereq_row.prereq_id;

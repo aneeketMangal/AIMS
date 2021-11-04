@@ -1,0 +1,1525 @@
+CREATE DATABASE aims;
+
+\c aims;
+
+CREATE ROLE deanoffice
+LOGIN
+PASSWORD 'deanoffice';
+
+CREATE ROLE faculty;
+CREATE ROLE student;
+
+--INSTRUCTOR USER NAME MUST BE '_' + INS_ID (HIS OR HER id), RATHER THAN THEIR NAME (eg, if puneet has id = 34, username = _34)
+
+CREATE TABLE courses(
+    course_id char(5) NOT NULL PRIMARY KEY,
+    Title VARCHAR(50) NOT NULL,
+    L float8 NOT NULL,
+    T float8 NOT NULL,
+    P float8 NOT NULL,
+    S float8 NOT NULL,
+    C float8 NOT NULL
+);
+
+GRANT ALL
+ON courses
+TO deanoffice;
+
+GRANT SELECT 
+ON courses
+TO faculty, student;
+
+CREATE TABLE prereq(
+    course_id char(5) NOT NULL,
+    prereq_Id char(5) NOT NULL,
+    PRIMARY KEY(course_id,prereq_Id),
+    FOREIGN KEY(course_id) REFERENCES courses(course_id),
+    FOREIGN KEY(prereq_Id) REFERENCES courses(course_id)
+);
+
+GRANT ALL
+ON prereq
+TO deanoffice;
+
+GRANT SELECT 
+ON prereq
+TO faculty, student;
+
+CREATE TABLE students(
+    id char(11) NOT NULL,
+    name varchar(40) NOT NULL,
+    dept char(3) NOT NULL,
+    batch INTEGER NOT NULL,
+    PRIMARY KEY(id)
+);
+
+GRANT SELECT 
+ON students
+TO deanoffice,faculty,student;
+
+CREATE TABLE instructor(
+    id INTEGER NOT NULL,
+    name varchar(40) NOT NULL,
+    dept varchar(4) NOT NULL,
+    PRIMARY KEY(id)
+);
+
+GRANT ALL 
+ON instructor
+TO deanoffice;
+
+GRANT SELECT
+ON instructor
+TO student, faculty;
+
+CREATE TABLE timeslots(
+    slot_type char(6) NOT NULL,
+    PRIMARY KEY(slot_type)
+);
+
+GRANT SELECT
+ON timeslots
+TO faculty,student,deanoffice;
+
+
+
+
+CREATE TABLE batches(
+    batch char(7) NOT NULL,
+    adv_id INTEGER,
+    PRIMARY KEY(batch),
+    FOREIGN KEY(adv_id) REFERENCES instructor(id)
+);
+
+GRANT SELECT 
+ON batches
+TO deanoffice,faculty,student;
+
+CREATE TABLE course_offering(
+    id INTEGER,
+    course_id char(5) NOT NULL,
+    year INTEGER NOT NULL,
+    semester INTEGER NOT NULL,
+    insid INTEGER NOT NULL,
+    slot char(6) NOT NULL,
+    classroom varchar(5),
+    CGPA float8,
+    PRIMARY KEY(id),
+    FOREIGN KEY(course_id) REFERENCES courses(course_id),
+    FOREIGN KEY(insid) REFERENCES instructor(id),
+    FOREIGN KEY(slot) REFERENCES timeslots(slot_type)
+);
+
+GRANT ALL 
+ON course_offering
+TO deanoffice,faculty;
+
+GRANT SELECT
+ON course_offering
+TO student;
+
+CREATE TABLE enrol(
+    student_id char(11) NOT NULL,
+    offering_id INTEGER NOT NULL,
+    PRIMARY KEY (student_id, offering_id),
+    FOREIGN KEY(student_id) REFERENCES students(id),
+    FOREIGN KEY(offering_id) REFERENCES course_offering(id)
+);
+
+GRANT ALL
+ON enrol
+TO deanoffice;
+
+GRANT SELECT
+ON enrol
+TO faculty,student;
+
+CREATE TABLE batch_constraint(
+    id INTEGER NOT NULL,
+    batch char(7) NOT NULL,
+    PRIMARY KEY (batch, id)
+);
+
+GRANT ALL ON
+batch_constraint
+TO deanoffice,faculty;
+
+GRANT SELECT ON
+batch_constraint
+TO student;
+
+--Create a table of tickets for Dean Academics (and grant access only to dean)
+--Write a trigger, whenever a new entry is made in batches table, a table of tickets is created for the batch advisor
+--For the batch advisor ticket table, "GRANT --- ON --- TO <batch advisor>"
+--i.e. Access should be granted only to batch advisor rather than to faculty
+--Similarly, a table can be created/updated for each student whenever he/she raises a ticket (which shows status)
+--Constraints to be checked can be that the course must be offered
+
+--
+
+-- ticket history
+CREATE TABLE tickets(
+    id INTEGER NOT NULL,
+    student_id char(11) NOT NULL,
+    offering_id integer NOT NULL,
+    faculty_ap integer NOT NULL,
+    advisor_ap integer NOT NULL, 
+    dean_ap integer NOT NULL,
+    PRIMARY KEY(id)
+);
+
+GRANT SELECT
+ON tickets
+TO faculty,student;
+
+GRANT ALL
+ON tickets
+TO deanoffice;
+
+
+CREATE OR REPLACE FUNCTION is_faculty(
+    username text
+)
+RETURNS boolean
+AS $_$
+DECLARE
+    temp_query text;
+    output boolean;
+    temp_var text;
+BEGIN
+    temp_var := substr(username, 2);
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM instructor WHERE instructor.id = '|| temp_var ||');'; 
+    EXECUTE temp_query INTO output;
+    RETURN output;
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION is_student(
+    username text
+)
+RETURNS boolean
+AS $_$
+DECLARE
+    temp_query text;
+    temp_var text;
+    output boolean;
+BEGIN
+    output := False;
+    if(length(username) = 12) then
+        temp_var := substr(username, 2);
+        temp_query := 'SELECT EXISTS(SELECT 1 FROM students WHERE students.id = '''|| temp_var ||''');'; 
+        EXECUTE temp_query INTO output;
+    END if;
+    RETURN output;
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION is_advisor(
+    username text
+)
+RETURNS boolean
+AS $_$
+DECLARE
+    temp_query text;
+    output boolean;
+    temp_var integer;
+
+BEGIN
+    temp_var := CAST(substr(username, 2) AS INTEGER);
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM batches WHERE batches.adv_id = '|| temp_var ||');'; 
+    EXECUTE temp_query INTO output;
+    RETURN output;
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+-- select * from student_tickets();
+CREATE OR REPLACE FUNCTION student_tickets()
+    RETURNS TABLE(
+        id INT,
+        student_id char(11),
+        offering_id INT,
+        faculty_ap INT,
+        advisor_ap INT,
+        dean_ap INT
+)
+AS $_$
+
+BEGIN
+    RETURN QUERY SELECT distinct tickets.id,
+    tickets.student_id, tickets.offering_id, 
+    tickets.faculty_ap, tickets.advisor_ap,
+    tickets.dean_ap
+    FROM tickets
+    where 
+    tickets.student_id ILIKE substr(session_user, 2);
+    
+END $_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+GRANT EXECUTE
+ON FUNCTION student_tickets
+TO student;
+
+CREATE OR REPLACE FUNCTION advisor_tickets()
+    RETURNS TABLE(
+        id INT,
+        student_id char(11),
+        offering_id INT,
+        faculty_ap INT,
+        advisor_ap INT,
+        dean_ap INT
+)
+AS $_$
+
+BEGIN
+    RETURN QUERY SELECT distinct tickets.id,
+    tickets.student_id, tickets.offering_id, 
+    tickets.faculty_ap, tickets.advisor_ap,
+    tickets.dean_ap
+    FROM tickets, batches
+    where 
+    substr(tickets.student_id, 1, 7) ILIKE batches.batch AND
+    batches.adv_id = substr(session_user, 2)::integer;
+    
+END $_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+GRANT EXECUTE
+ON FUNCTION advisor_tickets
+TO faculty;
+
+
+
+CREATE OR REPLACE FUNCTION faculty_tickets()
+    RETURNS TABLE(
+        id INT,
+        student_id char(11),
+        offering_id INT,
+        faculty_ap INT,
+        advisor_ap INT,
+        dean_ap INT
+)
+AS $_$
+
+BEGIN
+    RETURN QUERY SELECT distinct tickets.id,
+    tickets.student_id, tickets.offering_id, 
+    tickets.faculty_ap, tickets.advisor_ap,
+    tickets.dean_ap
+    FROM tickets, course_offering
+    where 
+    tickets.offering_id = course_offering.id AND
+    course_offering.insid = substr(session_user, 2)::integer;
+    
+END $_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+GRANT EXECUTE
+ON FUNCTION faculty_tickets
+TO faculty;
+
+
+
+CREATE OR REPLACE FUNCTION view_ticket_status(
+    ticket_id int
+)
+RETURNS record
+AS $_$
+DECLARE
+    create_table_command text;
+    stu_id char(11);
+    ins_id integer;
+    out_record record;
+    temp_query text;
+    temp_exist boolean;
+    temp_exist_two boolean;
+    temp_var text;
+    batch_ text;
+BEGIN
+    temp_query := 'SELECT EXISTS(SELECT 1 from tickets t where t.id = ' || ticket_id || ');';
+    EXECUTE temp_query INTO temp_exist;
+
+    if NOT temp_exist then
+        RAISE EXCEPTION 'Invalid ticket ID';
+        RETURN NULL;
+    END if;
+
+
+    if session_user = 'deanoffice' then
+        temp_query := 'SELECT offering_id, faculty_ap, advisor_ap, dean_ap FROM tickets WHERE tickets.id = ' || ticket_id || ';';
+        EXECUTE temp_query into out_record;
+        return out_record;
+    END if;
+
+    temp_query := 'SELECT is_student(''' || session_user || ''')';
+    EXECUTE temp_query INTO temp_exist;
+    if temp_exist then
+
+        stu_id := substr(session_user, 2);
+        temp_query := 'SELECT EXISTS(SELECT 1 FROM tickets t WHERE t.id = ' || ticket_id || ' AND t.student_id = ''' || stu_id ||''');';
+        EXECUTE temp_query INTO temp_exist_two;
+        if temp_exist_two then
+            temp_query := 'SELECT offering_id, faculty_ap, advisor_ap, dean_ap FROM tickets WHERE tickets.id = ' || ticket_id || ';';
+            EXECUTE temp_query into out_record;
+            return out_record;
+        else 
+            RAISE EXCEPTION 'Unauthorised access';
+        END if;
+    END if;
+
+
+    temp_query := 'SELECT is_faculty(''' || session_user || ''')';
+    EXECUTE temp_query INTO temp_exist;
+    if temp_exist then
+        ins_id := CAST(substr(session_user, 2) AS INTEGER);
+        temp_query := 'SELECT EXISTS(SELECT 1 FROM tickets t, course_offering c WHERE t.id = ' || ticket_id || ' AND c.id = t.offering_id AND c.insid = '|| ins_id||');';
+        EXECUTE temp_query INTO temp_exist_two;
+        if temp_exist_two then
+            temp_query := 'SELECT offering_id, faculty_ap, advisor_ap, dean_ap FROM tickets WHERE tickets.id = ' || ticket_id || ';';
+            EXECUTE temp_query into out_record;
+            RETURN out_record;
+        END if;
+    END if;
+
+    temp_query := 'SELECT is_advisor(''' || session_user || ''')';
+    EXECUTE temp_query INTO temp_exist;
+    if temp_exist then
+        ins_id := CAST(substr(session_user, 2) AS INTEGER);
+        temp_query := '(SELECT t.student_id FROM tickets t WHERE t.id = ' || ticket_id || ');';
+        EXECUTE temp_query INTO stu_id;
+        batch_ := substr(stu_id, 1, 7);
+        temp_query := 'SELECT EXISTS(SELECT 1 FROM batches b WHERE b.batch = ''' || batch_ || ''' AND b.adv_id = '|| ins_id || ');';
+        EXECUTE temp_query INTO temp_exist_two;
+        if temp_exist_two then
+            temp_query := 'SELECT offering_id, faculty_ap, advisor_ap, dean_ap FROM tickets WHERE tickets.id = ' || ticket_id || ';';
+            EXECUTE temp_query into out_record;
+            RETURN out_record;
+        END if;
+    END if;
+
+
+    RAISE NOTICE 'Unauthorised Action';
+    RETURN NULL;
+    
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+GRANT EXECUTE
+ON FUNCTION view_ticket_status
+TO student,faculty, deanoffice;
+
+
+--general ticket table template
+CREATE OR REPLACE FUNCTION create_ticket_table(
+    table_name text
+)
+RETURNS void
+AS $_$
+DECLARE
+    create_table_command text;
+BEGIN
+    create_table_command := 'CREATE TABLE ' || table_name || ' (';
+
+    create_table_command := create_table_command || ' id INTEGER NOT NULL,';
+    create_table_command := create_table_command || ' student_id char(11) NOT NULL,';
+    create_table_command := create_table_command || ' offering_id INTEGER NOT NULL,';
+    create_table_command := create_table_command || ' PRIMARY KEY(id),';
+    create_table_command := create_table_command || ' FOREIGN KEY(id) REFERENCES tickets(id),';
+    create_table_command := create_table_command || ' FOREIGN KEY(student_id) REFERENCES students(id),';
+    create_table_command := create_table_command || ' FOREIGN KEY(offering_id) REFERENCES course_offering(id));';
+    EXECUTE create_table_command;
+END
+$_$
+LANGUAGE plpgsql;
+
+--creating dean_tickets_table;
+SELECT create_ticket_table('dean_tickets');
+
+GRANT ALL 
+ON dean_tickets
+TO deanoffice;
+
+
+-- ticket raise by student
+-- defined by superuser
+CREATE OR REPLACE FUNCTION raise_ticket(
+    offering_id integer
+)
+RETURNS void
+AS $_$
+DECLARE
+    stu_id char(11);
+    table_name text;
+    ins_id integer;
+    insert_command text;
+    ticket_id integer;
+    temp_query text;
+    temp_exist boolean;
+BEGIN
+    stu_id := substr(session_user, 2);
+    temp_query := ('SELECT EXISTS(SELECT 1 FROM course_offering c where c.id = ' || offering_id || ');');
+    EXECUTE temp_query INTO temp_exist;
+    if NOT temp_exist then
+        RAISE EXCEPTION 'Offering not found';
+    END if;
+
+    temp_query := ('SELECT c.insid from course_offering c where c.id = ' || offering_id || ';');
+    EXECUTE temp_query into ins_id;
+    table_name := concat('_', ins_id,  '_instructor_tickets');
+
+    temp_query := ('SELECT EXISTS(SELECT 1 FROM tickets t WHERE t.student_id = ''' ||stu_id || ''' AND t.offering_id = ' || offering_id || ');');
+    EXECUTE temp_query INTO temp_exist;
+    if temp_exist then
+        RAISE EXCEPTION 'Ticket already raised';
+    END if;
+
+    ticket_id := (SELECT COUNT(*) from tickets);
+    insert_command := 'INSERT INTO tickets VALUES ('  || ticket_id || ',''' || stu_id || ''',' || offering_id || ', 0, 0, 0)';
+    EXECUTE insert_command;
+    insert_command := 'INSERT INTO ' || table_name || ' VALUES (' ||ticket_id || ',''' || stu_id || ''',' || offering_id || ');' ;
+    EXECUTE insert_command;
+    RAISE NOTICE'Your ticket id is %',ticket_id;
+
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+GRANT EXECUTE
+ON FUNCTION raise_ticket
+TO student;
+
+
+CREATE OR REPLACE FUNCTION propagate(
+    ticket_id int, 
+    table_from text, 
+    table_to text
+)
+RETURNS void
+AS $_$
+DECLARE
+    temp_query text;
+BEGIN
+    --RAISE NOTICE '% %',table_from,table_to;
+    temp_query := 'INSERT INTO ' || table_to || ' SELECT * FROM ' || table_from || ' tf WHERE tf.id = ' || ticket_id || ';';
+    --RAISE NOTICE '%',temp_query;
+    EXECUTE temp_query;
+    temp_query := 'DELETE FROM ' || table_from || ' tf WHERE tf.id  = ' || ticket_id || ';';
+    --RAISE NOTICE '%',temp_query;
+    EXECUTE temp_query;
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+
+
+
+
+-- updation of status of raised ticket by instructor
+CREATE OR REPLACE FUNCTION instructor_ticket_response(
+    ticket_id integer,
+    response boolean
+)
+RETURNS void
+AS $_$
+DECLARE
+    table_name text;
+    department text;
+    batch integer;
+    adv_table_name text;
+    ins_id integer;
+    update_command text;
+    delete_command text;
+    temp_query text;
+    temp_exist boolean;
+BEGIN
+    ins_id := CAST(substr(session_user, 2) AS INTEGER);
+    table_name := concat('_', ins_id,  '_instructor_tickets');
+
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM tickets t where t.id = ' || ticket_id || ');';
+    EXECUTE temp_query into temp_exist;
+    if NOT temp_exist then
+        RAISE EXCEPTION 'Invalid ticket ID';
+    END if;
+
+
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM ' || table_name ||  ' t where t.id = ' || ticket_id || ');';
+    EXECUTE temp_query into temp_exist;
+    if NOT temp_exist then
+        RAISE EXCEPTION 'Unauthorized Request';
+    END if;
+
+    if (response) then
+        update_command := 'UPDATE tickets set faculty_ap = 2 WHERE id ='||ticket_id||';';
+        EXECUTE update_command;
+        
+    else
+        update_command := 'UPDATE tickets set faculty_ap = 1 WHERE id ='||ticket_id||';';
+        EXECUTE update_command;
+    END if;
+    temp_query := 'SELECT st.batch,st.dept FROM students st WHERE st.id = (SELECT ti.student_id FROM ' 
+        || table_name || ' ti WHERE ti.id = ' || ticket_id || ');';
+    EXECUTE temp_query into batch,department;
+    adv_table_name := concat('_', CAST(batch as text),department,  '_advisor_tickets');
+    EXECUTE propagate(ticket_id,table_name, adv_table_name);
+
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+GRANT EXECUTE
+ON FUNCTION instructor_ticket_response
+TO faculty;
+
+
+--advisor ticket response function
+CREATE OR REPLACE FUNCTION advisor_ticket_response(
+    ticket_id integer,
+    response boolean
+)
+RETURNS void
+AS $_$
+DECLARE
+    table_name text;
+    batch_ text;
+    ins_id integer;
+    update_command text;
+    delete_command text;
+    temp_query text;
+    temp_exist boolean;
+BEGIN
+    ins_id := CAST(substr(session_user, 2) AS INTEGER);
+    temp_query := 'SELECT 1 from batches b WHERE b.adv_id = ' || ins_id || ';';
+    EXECUTE temp_query INTO temp_exist;
+    if NOT temp_exist then
+        RAISE EXCEPTION 'Unauthorised Access';
+    END if;
+
+    temp_query := '(SELECT b.batch from batches b WHERE b.adv_id = ' || ins_id || ');';
+    EXECUTE temp_query INTO batch_;
+    table_name := concat('_', batch_,  '_advisor_tickets');
+
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM tickets t where t.id = ' || ticket_id || ');';
+    EXECUTE temp_query into temp_exist;
+    if NOT temp_exist then
+        RAISE EXCEPTION 'Invalid ticket ID';
+    END if;
+
+
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM ' || table_name ||  ' t where t.id = ' || ticket_id || ');';
+    EXECUTE temp_query into temp_exist;
+    if NOT temp_exist then
+        RAISE EXCEPTION 'Unauthorized Request';
+    END if;
+
+    if (response) then
+        update_command := 'UPDATE tickets SET advisor_ap = 2 WHERE id = ' || ticket_id || ';';
+        EXECUTE update_command;
+    else
+        update_command := 'UPDATE tickets SET advisor_ap = 1 WHERE id = ' || ticket_id || ';';
+        EXECUTE update_command;
+    END if;
+    EXECUTE propagate(ticket_id,table_name, 'dean_tickets');
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+-- to be changed if we want to make a advisor group
+GRANT EXECUTE
+ON FUNCTION advisor_ticket_response
+TO faculty;
+
+-- to be decided if ki dean_tickets wali table rakhni hai kya
+
+CREATE OR REPLACE FUNCTION dean_ticket_response(
+    ticket_id integer,
+    response boolean
+)
+RETURNS void
+AS $_$
+DECLARE
+    table_name text;
+    update_command text;
+    temp_query text;
+    temp_exist boolean;
+    temp_record record;
+BEGIN
+    temp_query := 'SELECT EXISTS(SELECT 1 FROM tickets t where t.id = ' || ticket_id || ');';
+    EXECUTE temp_query into temp_exist;
+    if NOT temp_exist then
+        RAISE EXCEPTION 'Invalid ticket ID';
+    END if;
+
+    if (response) then
+        update_command := 'UPDATE tickets SET dean_ap = 2 WHERE id = ' || ticket_id || ';';
+        temp_query := 'SELECT t.student_id, t.offering_id FROM tickets t WHERE t.id = ' || ticket_id || ';';
+        EXECUTE temp_query INTO temp_record;
+        temp_query := 'INSERT INTO enrol VALUES(''' || temp_record.student_id ||''','||temp_record.offering_id|| ');';
+        EXECUTE temp_query;
+    else
+        update_command := 'UPDATE tickets SET dean_ap = 1 WHERE id = ' || ticket_id || ';';
+    END if;
+    EXECUTE update_command;
+    DELETE FROM dean_tickets WHERE dean_tickets.id = ticket_id;
+    RETURN;
+END
+$_$
+LANGUAGE plpgsql;
+
+GRANT EXECUTE
+ON FUNCTION dean_ticket_response
+TO deanoffice;
+
+--merge advisor ticket table functionality
+CREATE OR REPLACE FUNCTION add_batch()
+	RETURNS TRIGGER 
+	LANGUAGE PLPGSQL
+	
+AS $$
+DECLARE
+	table_name text;
+	curr_table_name text;
+	curr_batch batches.batch%type;
+	create_table_command text;
+	grant_access_command text;
+	
+BEGIN
+	curr_batch := NEW.batch;
+	curr_table_name := 'curriculum_'||curr_batch;
+	create_table_command := 'CREATE TABLE '||curr_table_name;
+	create_table_command := create_table_command||'(course_id char(5) NOT NULL,';
+	create_table_command := create_table_command||'course_type varchar(3) NOT NULL,';
+	create_table_command := create_table_command||'PRIMARY KEY(course_id), ';
+	create_table_command := create_table_command||'FOREIGN KEY(course_id) REFERENCES courses(course_id) );';
+	EXECUTE create_table_command;
+
+	grant_access_command := 'GRANT ALL ON '||curr_table_name;
+	grant_access_command := grant_access_command||' TO deanoffice;';
+	EXECUTE grant_access_command;
+
+	grant_access_command := 'GRANT SELECT ON '||curr_table_name;
+	grant_access_command := grant_access_command||' TO faculty,student;';
+	EXECUTE grant_access_command;
+
+    table_name := concat('_', curr_batch,  '_advisor_tickets');
+    EXECUTE create_ticket_table(table_name);
+
+    grant_access_command := 'GRANT ALL ON ' || table_name ||' TO _' || NEW.adv_id ||', deanoffice' || ';';
+    EXECUTE grant_access_command;
+	RETURN NEW;
+END;
+$$;
+
+
+CREATE TRIGGER new_batch
+	AFTER INSERT
+	ON batches
+	FOR EACH ROW
+	EXECUTE PROCEDURE add_batch();
+
+CREATE OR REPLACE FUNCTION add_student()
+	RETURNS TRIGGER
+	LANGUAGE PLPGSQL
+	
+AS $$
+DECLARE
+	st_id students.id%type;
+	create_role_command text;
+	table_name text;
+	create_transcript_command text;
+	grant_access_command text;
+BEGIN
+	st_id := NEW.id;
+	create_role_command := 'CREATE ROLE _'||st_id;
+	create_role_command :=  create_role_command||' WITH IN GROUP student';
+	create_role_command :=  create_role_command||' LOGIN PASSWORD ''';
+	create_role_command :=  create_role_command||st_id;
+	create_role_command :=  create_role_command||''';';
+	RAISE NOTICE '%',create_role_command;
+	EXECUTE create_role_command;
+
+	table_name := 'transcript_'||st_id;
+	create_transcript_command := 'CREATE TABLE '||table_name||' (';
+	create_transcript_command := create_transcript_command||'off_id INTEGER NOT NULL,';
+	create_transcript_command := create_transcript_command||'grade varchar(2),';
+	create_transcript_command := create_transcript_command||'PRIMARY KEY(off_id),';
+	create_transcript_command := create_transcript_command||'FOREIGN KEY(off_id) REFERENCES course_offering(id)';
+	create_transcript_command := create_transcript_command||');';
+	EXECUTE create_transcript_command;
+
+	grant_access_command := 'GRANT ALL ON '||table_name||' TO deanoffice;';
+	EXECUTE grant_access_command;
+
+	grant_access_command := 'GRANT SELECT ON '||table_name||' TO _'||st_id||' ;';
+	EXECUTE grant_access_command;
+	
+	RETURN NEW;
+
+END;
+$$;
+
+--make delete for student table
+
+CREATE TRIGGER insert_student
+	AFTER INSERT
+	ON students
+	FOR EACH ROW
+	EXECUTE PROCEDURE add_student();
+
+--merge ticket table creation facility
+CREATE OR REPLACE FUNCTION add_instructor()
+	RETURNS TRIGGER
+	LANGUAGE PLPGSQL
+AS $$
+DECLARE
+	ins_id integer;
+	create_role_command text;
+	grant_access_command text;
+	table_name text;
+	
+BEGIN
+	ins_id := NEW.id;
+	create_role_command := 'CREATE ROLE _'||ins_id;
+	create_role_command :=  create_role_command||' WITH IN GROUP faculty';
+	create_role_command :=  create_role_command||' LOGIN PASSWORD ''';
+	create_role_command :=  create_role_command||ins_id;
+	create_role_command :=  create_role_command||''';';
+
+	EXECUTE create_role_command;
+
+	table_name := concat('_', ins_id,  '_instructor_tickets');
+    EXECUTE create_ticket_table(table_name);
+
+    grant_access_command := 'GRANT ALL ON ' || table_name ||' TO _' || ins_id || ', deanoffice;';
+    EXECUTE grant_access_command;
+
+	RETURN NEW;
+
+END;
+$$;
+
+
+CREATE TRIGGER insert_instuctor
+	AFTER INSERT
+	ON instructor
+	FOR EACH ROW
+	EXECUTE PROCEDURE add_instructor();
+
+--key points to note
+-- 1. Course can now be offered by any other instructor (for same sem/year)
+-- 2. Course must exist.
+-- 3. Grades are character grades (A+, A-, B+, B-)
+
+--On each entry in course_offering, 2 tables will be created
+-- 1. Tickets corresponding to that course offering (security definer).
+-- 2. Grades corresponding to that course offering (format: "__grades").
+
+
+--grade table template
+CREATE OR REPLACE FUNCTION create_grade_table()
+RETURNS TRIGGER
+AS $_$
+DECLARE
+    table_name text;
+    create_table_command text;
+    grant_permission_command text;
+BEGIN
+    table_name := concat('_', NEW.id,  '_grades');
+    create_table_command := 'CREATE TABLE ' || table_name || ' (';
+    create_table_command := create_table_command || ' student_id char(11) NOT NULL,';
+    create_table_command := create_table_command || ' grade varchar(2) NOT NULL,';
+    create_table_command := create_table_command || ' PRIMARY KEY(student_id),';
+    create_table_command := create_table_command || ' FOREIGN KEY(student_id) REFERENCES students(id));';
+    
+    EXECUTE create_table_command;
+
+    grant_permission_command := 'GRANT ALL ON ' || table_name || ' TO deanoffice, _'||NEW.insid||';';
+    EXECUTE grant_permission_command;
+
+
+    return null;
+END
+$_$
+LANGUAGE plpgsql
+SECURITY DEFINER;
+
+
+CREATE TRIGGER grade_table
+AFTER INSERT
+ON course_offering
+FOR EACH ROW
+EXECUTE FUNCTION create_grade_table();
+
+
+--constraint update procedure
+CREATE OR REPLACE PROCEDURE update_constraint
+(
+    offering_id integer,
+    batch_list varchar,
+    is_offer boolean
+)
+LANGUAGE plpgsql
+SECURITY INVOKER
+AS $$
+declare
+    --split the batch list into a table of batches, and define a cursor for the table
+    cur CURSOR FOR (SELECT batch FROM regexp_split_to_table(batch_list, E',') AS batch);
+    batch_in_list varchar;
+    ins_id integer;
+    offering_ins_id integer;
+begin
+    ins_id := CAST(substr(user, 2) AS INTEGER);
+    offering_ins_id := (SELECT O.insid FROM course_offering O WHERE O.id = offering_id);
+    if NOT EXISTS (SELECT 1 FROM course_offering c where c.id = offering_id) then
+        RAISE EXCEPTION 'Invalid offering id.';
+    END if;
+    if ins_id != offering_ins_id then
+        RAISE EXCEPTION 'Unauthorised Request.';
+    END if;
+    open cur; 
+    LOOP
+        FETCH cur into batch_in_list;
+        EXIT when not found;
+        if(is_offer) then
+            INSERT INTO batch_constraint(id, batch)
+            VALUES
+            (offering_id, batch_in_list);
+        else
+            DELETE FROM batch_constraint b
+            WHERE
+            b.id = offering_id AND
+            b.batch = batch_in_list;
+        END if;
+    end LOOP;
+    close cur;
+end;$$;
+
+GRANT EXECUTE
+ON PROCEDURE update_constraint
+TO faculty;
+
+--procedure for offering courses
+--batch_list to be provided as '2019csb,2020eeb,2018ceb'
+CREATE OR REPLACE PROCEDURE offer_course
+(
+    course_id char(5),
+    semester integer,
+    year integer,
+    batch_list varchar,
+    slot char(6),
+    classroom varchar,
+    CGPA float8
+)
+LANGUAGE plpgsql
+SECURITY INVOKER
+AS $$
+declare
+    ins_id integer;
+    offering_id integer;
+begin
+    ins_id := CAST(substr(user, 2) AS INTEGER);
+
+    --if the course exists
+    if EXISTS(SELECT 1 FROM courses WHERE courses.course_id = $1) then
+        
+        -- if time slots of none of the the previous offering by ins_id
+        -- conflicts with current offering's slot 
+        -- insid can offer the course
+        if NOT EXISTS(
+            SELECT 1 FROM course_offering C WHERE 
+            C.insid = ins_id and C.semester = $2 and C.year = $3 and C.slot = $5
+        ) then
+
+            SELECT count(*)
+            INTO offering_id
+            FROM course_offering;
+
+            INSERT INTO course_offering(id,course_id, year, semester, insid, slot, classroom, CGPA)
+            VALUES
+            (offering_id,course_id, year, semester, ins_id, slot, classroom, CGPA);
+
+            
+            call update_constraint(offering_id, batch_list, true);
+        
+        --if the course is offered this sem-year    
+        else
+           -- SELECT C.id into conflict_id
+           -- FROM course_offering C
+           -- WHERE
+           -- C.insid = ins_id and C.semester = semester and C.year = year and C.slot = slot;
+            RAISE EXCEPTION '% offering will have time slot conflict with an existing offering.', course_id;
+        END if;
+    
+    --if the course doesn't exist
+    else
+        RAISE EXCEPTION 'Course % does not exist.', course_id;
+    END if;
+end;$$;
+
+GRANT EXECUTE
+ON PROCEDURE offer_course
+TO faculty;
+
+--FUNCTIONS MUST BE CREATED BY deanoffice
+--Every faculty should be able to calculate student's cgpa
+--SO, FACULTY MUST BE GIVEN SELECT ON STUDENT TRANSCRIPTS
+
+CREATE OR REPLACE FUNCTION grade_to_points
+(
+    grade varchar(2)
+)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+declare
+    points integer;
+begin
+    if grade='A' THEN
+        points := 10;
+    end if;
+    if grade='A-' THEN
+        points := 9;
+    end if;
+    if grade='B' THEN
+        points := 8;
+    end if;
+    if grade='B-' THEN
+        points := 7;
+    end if;
+    if grade='C' THEN
+        points := 6;
+    end if;
+    if grade='C-' THEN
+        points := 5;
+    end if;
+    if grade='D' THEN
+        points := 4;
+    end if;
+    if grade='F' THEN
+        points := 0;
+    end if;
+
+    return points;
+end;
+$$;
+
+
+CREATE OR REPLACE FUNCTION cgpa_calculation
+(
+    student_id char(11)
+)
+RETURNS numeric(4, 2)
+LANGUAGE plpgsql
+SECURITY INVOKER
+AS $$
+declare
+    cgpa numeric(4, 2) := 00.00;
+    grade_points float8 := 0;
+    transcript_table_name text;
+    cur REFCURSOR;
+    rec record;
+    course_credits float8;
+    total_credits float8 := 0;
+    get_credits_command text;
+    points float8; 
+begin
+
+    grade_points :=0;
+    transcript_table_name := 'transcript_' || student_id;
+
+    --for all courses in the student's transcript
+    open cur FOR EXECUTE 'SELECT * FROM ' || transcript_table_name||' where grade!=''F''';
+    LOOP
+        FETCH cur INTO rec;
+        EXIT when not found;
+
+        --get course credits from courses table
+        get_credits_command := 'SELECT courses.C FROM courses, course_offering O WHERE O.id = ' || rec.off_id || ' and O.course_id = courses.course_id;';
+        EXECUTE get_credits_command INTO course_credits;
+
+        --update grade points and total credits
+        points := grade_to_points(rec.grade);
+        grade_points := grade_points + (course_credits * points);
+        total_credits := total_credits + course_credits;
+    end LOOP;
+
+    if total_credits=0 then
+        return 0;
+    end if;
+
+    --calculate cgpa
+    cgpa := CAST(grade_points AS decimal) / total_credits;
+    return cgpa;
+end;
+$$;
+
+--THE GRADE COPY STORED PROCEDURE MUST BE CREATED BY DEAN OFFICE (I.E.SUPERUSER)
+--AS THE COPY COMMAND REQUIRES SUPERUSER ACCESS
+--THE SECURITY MUST BE DEFINER
+--ACCESS TO THE PROCEDURE SHALL BE GRANTED TO FACULTY ONLY
+
+--GRADE TABLE NAME TO BE ADDED
+
+CREATE OR REPLACE PROCEDURE add_grades
+(
+    offering_id integer,
+    path_to_csv text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+declare
+    ins_id integer;
+    offering_ins_id integer;
+    temp_table_name text;
+    table_creation_command text;
+    copy_command text;
+    grade_table_name text; --real grade table
+    update_table_command text;
+    drop_table_command text;
+begin
+    --check for authorisation (instructor must have offered the course)
+    ins_id := CAST(substr(session_user, 2) AS INTEGER);
+    SELECT O.insid INTO offering_ins_id FROM course_offering O WHERE O.id = offering_id;
+
+    --If instructor authorised
+    if offering_ins_id = ins_id then
+        
+        --IF ENROL TABLE IS DISSOLVED
+        ----create temp table
+        --temp_table_name := offering_id || '_grades_temp';
+        --table_creation_command := 'CREATE TABLE ' || temp_table_name || ' (';
+        --table_creation_command := table_creation_command || ' student_id char(11) NOT NULL,';
+        --table_creation_command := table_creation_command || ' grade varchar(2));';
+        --EXECUTE table_creation_command;
+--
+        ----copy from csv to temp table
+        --copy_command := 'COPY ' || temp_table_name || ' FROM \'' || path_to_csv || '\' DELIMITER \',\' CSV HEADER;';
+        --EXECUTE copy_command;
+--
+        ----copy from temp table to real table
+        ---- GRADE TABLE NAME TO BE ADDED
+        --grade_table_name = ;
+        --update_table_command := 'UPDATE ' || grade_table_name || ' G';
+        --update_table_command := update_table_command || ' SET G.grade = T.grade';
+        --update_table_command := update_table_command || ' FROM ' || temp_table_name || ' T';
+        --update_table_command := update_table_command || ' WHERE T.student_id = G.student_id;';
+        --EXECUTE update_table_command;
+--
+        ----drop temp table
+        --drop_table_command := 'DROP TABLE ' || temp_table_name || ';';
+        --EXECUTE drop_table_command;
+
+        grade_table_name := '_'||offering_id||'_grades';
+        --IF ENROL TABLE IS NOT DISSOLVED
+        copy_command := 'copy ' || grade_table_name || ' from ''' || path_to_csv || ''' csv header;';
+        EXECUTE copy_command;
+
+    --If not authorised
+    else
+        RAISE EXCEPTION 'Action not authorised.';
+    END if;
+end;
+$$;
+
+GRANT EXECUTE
+ON PROCEDURE add_grades
+TO faculty;
+
+-- TO BE CREATED BY deanoffice
+-- PC, PE, SC, SE REQUIRED CREDITS HARDCODED
+
+CREATE OR REPLACE FUNCTION graduation_check
+(
+    student_id char(11)
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY INVOKER
+AS $$
+declare
+    curriculum_cur REFCURSOR;
+    transcript_table_name text;
+    curriculum_table_row record;
+    curriculum_table_name text;
+    cgpa numeric(4, 2);
+    pc_credits integer := 0;
+    pe_credits integer := 0;
+    sc_credits integer := 0;
+    oe_credits integer := 0;
+    row_check_command text;
+    row_exist boolean;
+    get_credits_command text;
+    course_credits integer := 0;
+begin
+    --check cgpa >= 5.00
+    cgpa := cgpa_calculation(student_id);
+    if cgpa < 5.00 then
+        RAISE NOTICE'cgpa=% less than 5',cgpa;
+        return false;
+    END if;
+
+    --batch and transcript table name
+    curriculum_table_name := 'curriculum_' || substr(student_id, 1, 7);
+    transcript_table_name := 'transcript_' || student_id;
+
+    --check for program core credits
+    open curriculum_cur FOR EXECUTE 'SELECT * FROM ' || curriculum_table_name || ' WHERE course_type = ''PC''';
+    LOOP
+        FETCH curriculum_cur INTO curriculum_table_row;
+        EXIT when not found;
+
+        --check if the course is done by the student (and that he/she has passed in the course)
+        row_check_command := 'SELECT EXISTS(SELECT * FROM ' || transcript_table_name || ', course_offering O, courses C WHERE C.course_id = ''' || curriculum_table_row.course_id || ''' and off_id = O.id and O.course_id = C.course_id and grade <> ''F'');';
+        EXECUTE row_check_command INTO row_exist;
+
+        --if the above condition is satisfied
+        if row_exist then
+            --get the course credits
+            get_credits_command := 'SELECT C FROM courses WHERE course_id = ''' || curriculum_table_row.course_id || ''';';
+            EXECUTE get_credits_command INTO course_credits;
+            --update pc_credits
+            pc_credits := pc_credits + course_credits;
+        END if;
+    END LOOP;
+    close curriculum_cur;
+
+    --if pc_credits is less than required
+    if pc_credits < 21 then
+        RAISE NOTICE 'PC credits not completed';
+        return false;
+    END if;
+
+    --check for program elective credits
+    open curriculum_cur FOR EXECUTE 'SELECT * FROM ' || curriculum_table_name || ' WHERE course_type = ''PE''';
+    LOOP
+        FETCH curriculum_cur INTO curriculum_table_row;
+        EXIT when not found;
+
+        --check if the course is done by the student (and that he/she has passed in the course)
+        row_check_command := 'SELECT EXISTS(SELECT * FROM ' || transcript_table_name || ', course_offering O, courses C WHERE C.course_id = ''' || curriculum_table_row.course_id || ''' and off_id = O.id and O.course_id = C.course_id and grade <> ''F'');';
+        EXECUTE row_check_command INTO row_exist;
+
+        --if the above condition is satisfied
+        if row_exist then
+            --get the course credits
+            get_credits_command := 'SELECT C FROM courses WHERE course_id = ''' || curriculum_table_row.course_id || ''';';
+            EXECUTE get_credits_command INTO course_credits;
+            --update pe_credits
+            pe_credits := pe_credits + course_credits;
+        END if;
+    END LOOP;
+    close curriculum_cur;
+
+    --if pe_credits is less than required
+    if pe_credits < 4 then
+        RAISE NOTICE 'PE credits not completed';
+        return false;
+    END if;
+
+    --check for science core credits
+    open curriculum_cur FOR EXECUTE 'SELECT * FROM ' || curriculum_table_name || ' WHERE course_type = ''SC''';
+    LOOP
+        FETCH curriculum_cur INTO curriculum_table_row;
+        EXIT when not found;
+
+        --check if the course is done by the student (and that he/she has passed in the course)
+        row_check_command := 'SELECT EXISTS(SELECT * FROM ' || transcript_table_name || ', course_offering O, courses C WHERE C.course_id = ''' || curriculum_table_row.course_id || ''' and off_id = O.id and O.course_id = C.course_id and grade <> ''F'');';
+        EXECUTE row_check_command INTO row_exist;
+
+        --if the above condition is satisfied
+        if row_exist then
+            --get the course credits
+            get_credits_command := 'SELECT C FROM courses WHERE course_id = ''' || curriculum_table_row.course_id || ''';';
+            EXECUTE get_credits_command INTO course_credits;
+            --update sc_credits
+            sc_credits := sc_credits + course_credits;
+        END if;
+    END LOOP;
+    close curriculum_cur;
+
+    --if sc_credits is less than required
+    if sc_credits < 4 then
+        RAISE NOTICE 'SC credits not completed';
+        return false;
+    END if;
+
+    --check for open elective credits
+    open curriculum_cur FOR EXECUTE 'SELECT * FROM ' || curriculum_table_name || ' WHERE course_type = ''OE''';
+    LOOP
+        FETCH curriculum_cur INTO curriculum_table_row;
+        EXIT when not found;
+
+        --check if the course is done by the student (and that he/she has passed in the course)
+        row_check_command := 'SELECT EXISTS(SELECT * FROM ' || transcript_table_name || ', course_offering O, courses C WHERE C.course_id = ''' || curriculum_table_row.course_id || ''' and off_id = O.id and O.course_id = C.course_id and grade <> ''F'');';
+        EXECUTE row_check_command INTO row_exist;
+
+        --if the above condition is satisfied
+        if row_exist then
+            --get the course credits
+            get_credits_command := 'SELECT C FROM courses WHERE course_id = ''' || curriculum_table_row.course_id || ''';';
+            EXECUTE get_credits_command INTO course_credits;
+            --update oe_credits
+            oe_credits := oe_credits + course_credits;
+        END if;
+    END LOOP;
+    close curriculum_cur;
+
+    --if oe_credits is less than required
+    if oe_credits < 3 then
+        RAISE NOTICE 'OE credits not completed';
+        return false;
+    END if;
+
+    --if all conditions are followed, return true
+    RAISE NOTICE 'ALL conditions fulfilled. Ready to graduate';
+    return true;
+end;
+$$;
+
+GRANT EXECUTE
+ON FUNCTION graduation_check
+TO deanoffice;
+
+-- TWO FUNCTIONS :-
+-- MUST BE CREATED BY DEANOFFICE ONLY
+-- 1. TRANSCRIPT GENERATION FOR A SINGLE STUDENT (To be implemented)
+-- 2. TRANSCRIPT GENERATION FOR ALL STUDENTS
+
+--Two implementation :- using enrol table, or going offering wise (better optimisation on latter)
+
+--GRADE TABLE NAME TO BE ADDED
+
+CREATE OR REPLACE PROCEDURE transcript_generation
+(
+    sem integer,
+    ye integer
+)
+LANGUAGE plpgsql
+AS $$
+declare
+    --cursor for offerings in the given semester and year
+    offering_cursor CURSOR FOR (SELECT * FROM course_offering O WHERE O.semester = sem and O.year = ye);
+    grade_table_cursor REFCURSOR;
+    offering_table_row record;
+    grade_table_name text;
+    grade_table_row record;
+    transcript_table_name text;
+    transcript_entry_command text;
+    temp_command text;
+    
+begin
+    open offering_cursor;
+    LOOP
+        FETCH offering_cursor INTO offering_table_row;
+        EXIT when not found;
+
+        --GRADE TABLE NAME TO BE ADDED
+        grade_table_name = '_'||offering_table_row.id||'_grades';
+
+        --open grade table cursor
+        temp_command := 'SELECT student_id, grade FROM ' || grade_table_name || ';';
+        open grade_table_cursor FOR EXECUTE temp_command;
+        LOOP
+            FETCH grade_table_cursor INTO grade_table_row;
+            EXIT when not found;
+
+            --make entry in transcript
+            transcript_table_name := 'transcript_' || grade_table_row.student_id;
+            transcript_entry_command := 'INSERT INTO ' || transcript_table_name;
+            transcript_entry_command := transcript_entry_command || ' VALUES (';
+            transcript_entry_command := transcript_entry_command || offering_table_row.id || ', ''';
+            transcript_entry_command := transcript_entry_command || grade_table_row.grade || ''');';
+            EXECUTE transcript_entry_command;
+        end LOOP;
+        close grade_table_cursor;
+    end LOOP;
+end;
+$$;
+
+GRANT EXECUTE
+ON PROCEDURE transcript_generation
+TO deanoffice;
+
+--transcript_2019csb1124
+
+CREATE OR REPLACE FUNCTION request_enrolment
+(
+	off_id course_offering.id%type,
+	st_id students.id%type,
+	curr_semester course_offering.semester%type,
+	curr_year course_offering.year%type
+)
+RETURNS VOID
+LANGUAGE PLPGSQL
+SECURITY DEFINER
+AS $$
+DECLARE
+	offering_row record;
+	student_row record;
+	credit_limit float8;
+	temp record;	
+	ifUser boolean := false;	
+	st_batch char(7);	
+	transcript_name text;
+	course_check_command text;
+	credit_calculate_command text;
+	row_exist boolean;
+	prev_year integer;
+	prev_sem_credit float8;
+	curr_sem_credit float8;
+	course_credit float8;
+	prereq_cursor refcursor;
+	prereq_row record;
+BEGIN
+	--check if student invoking function is same
+	
+	ifUser := false;
+
+	if st_id=substr(session_user,2) then
+		ifUser := true;
+	end if;	
+	
+	if session_user = 'deanoffice' then
+		ifUser	:= true;
+	end if;
+
+	if ifUser=false then
+		RAISE EXCEPTION 'Cannot create request for other user';
+	end if;
+
+	select * from course_offering 
+	into offering_row
+	where id=off_id and semester=curr_semester and year=curr_year;
+	
+	if not found then
+		RAISE EXCEPTION 'current offering with id % not found',off_id;	
+	end if;
+		
+	select * from students
+	into student_row
+	where id=st_id;
+
+	if not found then
+		RAISE EXCEPTION 'student with id % not found',st_id;	
+	end if;
+	
+	select * from enrol E, course_offering O
+	into temp
+	where 
+	E.offering_id = O.id
+	and E.student_id = st_id
+	and O.semester=curr_semester
+	and O.year=curr_year
+	and O.slot=offering_row.slot;
+
+	if found then
+		RAISE EXCEPTION '% has enroled course in same time slot',st_id;
+	end if;	
+
+	st_batch := CAST(student_row.batch AS char(4))||student_row.dept;
+	select * from batch_constraint B
+	into temp
+	where
+	B.id=off_id
+	and B.batch=st_batch;
+
+	if not found then
+		RAISE EXCEPTION 'Your batch has not been allowed by instructor to enrol';
+	end if;
+	
+	--have not done course before
+	transcript_name:= 'transcript_'||st_id;
+	course_check_command := 'SELECT EXISTS(SELECT * FROM ' || transcript_name || ' T, course_offering O WHERE T.off_id=O.id and O.course_id='''||offering_row.course_id||''' and T.grade!=''F'');';	
+	EXECUTE course_check_command into row_exist;	
+
+	if row_exist then
+		RAISE EXCEPTION 'student % has done this course before',st_id;
+	end if;
+
+	--prerequisite check
+	open prereq_cursor FOR EXECUTE 'SELECT * FROM prereq P where P.course_id='''||offering_row.course_id||''';';				
+	LOOP 
+		FETCH prereq_cursor INTO prereq_row;
+		EXIT when not found;
+		
+		course_check_command := 'SELECT EXISTS(SELECT * FROM '||transcript_name||' T, course_offering O where T.off_id=O.id and O.course_id='''||prereq_row.prereq_id||''' and T.grade!=''F'') ;';
+		EXECUTE course_check_command INTO row_exist;
+		if not row_exist then
+			RAISE EXCEPTION 'prerequiste course % not completed yet',prereq_row.prereq_id;
+		end if;
+
+	END LOOP;
+
+
+
+	
+	--cgpa check
+	if offering_row.CGPA is not NULL then
+		if cgpa_calculation(st_id)<offering_row.CGPA then
+			RAISE EXCEPTION 'CGPA of student is less than minimum required CGPA';
+		end if;
+	end if;
+			
+
+	--credit limit check	
+	if curr_year=student_row.batch then
+		credit_limit := 18.0;
+	else 
+		prev_year:= curr_year-1;
+		if curr_semester=1 then
+
+			credit_calculate_command := 'SELECT sum(C) from '||transcript_name||' T, course_offering O, courses C where T.off_id=O.id and O.course_id=C.course_id and O.year='||					prev_year||'and T.grade!=''F'' group by O.year;';								
+			EXECUTE credit_calculate_command into credit_limit;
+
+		else
+
+			credit_calculate_command := 'SELECT sum(C) from '||transcript_name||' T, course_offering O, courses C where T.off_id=O.id and O.course_id=C.course_id and O.year='||					curr_year||' and O.semester=1 and T.grade!=''F'' group by O.year;';
+			EXECUTE credit_calculate_command into credit_limit;
+
+			credit_calculate_command := 'SELECT sum(C) from '||transcript_name||' T, course_offering O, courses C where T.off_id=O.id and O.course_id=C.course_id and O.year='||				prev_year||' and O.semester=2 and T.grade!=''F'' group by O.year;';
+			EXECUTE credit_calculate_command into prev_sem_credit;
+			credit_limit:= credit_limit+prev_sum_credit;
+
+		end if;
+		credit_limit := 1.25*(credit_limit/2);		
+	end if;
+
+	credit_calculate_command := 'SELECT sum(C) from enrol E, course_offering O, courses C where E.offering_id=O.id and O.course_id=C.course_id and E.student_id='''||st_id||''' and O.semester='||curr_semester||' and O.year='||curr_year||' group by O.year';
+	EXECUTE credit_calculate_command into curr_sem_credit;
+	
+	select C from courses
+	into course_credit
+	where 
+	course_id=offering_row.course_id;
+	
+	if curr_sem_credit+course_credit>credit_limit then
+		--check for ticket
+		RAISE EXCEPTION 'credit limit exceeded';
+	else
+		INSERT into enrol(student_id,offering_id) VALUES(st_id,off_id);	
+	end if;
+
+	RETURN;
+	
+END;
+$$;
+
+GRANT EXECUTE 
+ON FUNCTION request_enrolment
+TO student,deanoffice;

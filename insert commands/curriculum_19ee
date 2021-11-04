@@ -1,0 +1,21 @@
+INSERT INTO curriculum_2019eeb VALUES('ee201', 'PC');
+INSERT INTO curriculum_2019eeb VALUES('ee202', 'PC');
+INSERT INTO curriculum_2019eeb VALUES('ee203', 'PC');
+INSERT INTO curriculum_2019eeb VALUES('ee301', 'PC');
+INSERT INTO curriculum_2019eeb VALUES('ee302', 'PC');
+INSERT INTO curriculum_2019eeb VALUES('ee303', 'PC');
+INSERT INTO curriculum_2019eeb VALUES('ma101', 'SC');
+INSERT INTO curriculum_2019eeb VALUES('ma102', 'SC');
+INSERT INTO curriculum_2019eeb VALUES('ph101', 'SC');
+INSERT INTO curriculum_2019eeb VALUES('cs201', 'OE');
+INSERT INTO curriculum_2019eeb VALUES('cs202', 'OE');
+INSERT INTO curriculum_2019eeb VALUES('cs203', 'OE');
+INSERT INTO curriculum_2019eeb VALUES('cs301', 'OE');
+INSERT INTO curriculum_2019eeb VALUES('cs302', 'OE');
+INSERT INTO curriculum_2019eeb VALUES('cs303', 'OE');
+INSERT INTO curriculum_2019eeb VALUES('cs204', 'OE');
+INSERT INTO curriculum_2019eeb VALUES('ge104', 'PE');
+INSERT INTO curriculum_2019eeb VALUES('ge204', 'PE');
+INSERT INTO curriculum_2019eeb VALUES('hs101', 'PE');
+INSERT INTO curriculum_2019eeb VALUES('hs103', 'PE');
+

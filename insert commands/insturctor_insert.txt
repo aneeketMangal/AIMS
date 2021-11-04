@@ -1,10 +1,18 @@
-INSERT INTO instructor(id, name, dept) VALUES (1,'ipvnd','eeb');
-INSERT INTO instructor(id, name, dept) VALUES (2,'goi','mmb');
-INSERT INTO instructor(id, name, dept) VALUES (3,'qtngviq','csb');
-INSERT INTO instructor(id, name, dept) VALUES (4,'wnpvon','mmb');
-INSERT INTO instructor(id, name, dept) VALUES (5,'xrkzzc','mcb');
-INSERT INTO instructor(id, name, dept) VALUES (6,'qnds','csb');
-INSERT INTO instructor(id, name, dept) VALUES (7,'jjiyfomsdv','chb');
-INSERT INTO instructor(id, name, dept) VALUES (8,'wwh','mmb');
-INSERT INTO instructor(id, name, dept) VALUES (9,'zhtbp','chb');
-INSERT INTO instructor(id, name, dept) VALUES (10,'zmqz','ceb');
+INSERT INTO instructor(id, name, dept) VALUES (1,'ipvnd','eed');
+INSERT INTO instructor(id, name, dept) VALUES (2,'goi','csd');
+INSERT INTO instructor(id, name, dept) VALUES (3,'qtngviq','csd');
+INSERT INTO instructor(id, name, dept) VALUES (4,'wnpvon','eed');
+INSERT INTO instructor(id, name, dept) VALUES (5,'xrkzzc','mcd');
+INSERT INTO instructor(id, name, dept) VALUES (6,'qnds','csd');
+INSERT INTO instructor(id, name, dept) VALUES (7,'jjiyfomsdv','csd');
+INSERT INTO instructor(id, name, dept) VALUES (8,'wwh','eed');
+INSERT INTO instructor(id, name, dept) VALUES (9,'zhtbp','mcd');
+INSERT INTO instructor(id, name, dept) VALUES (10,'zmqz','mcd');
+
+GRANT ALL
+ON batches
+TO deanoffice;
+
+GRANT SELECT
+ON batches
+TO faculty, student; 
