@@ -126,18 +126,29 @@ BEGIN
 		prev_year:= curr_year-1;
 		if curr_semester=1 then
 
-			credit_calculate_command := 'SELECT sum(C) from '||transcript_name||' T, course_offering O, courses C where T.off_id=O.id and O.course_id=C.course_id and O.year='||					prev_year||'and T.grade!=''F'' group by O.year;';								
+			credit_calculate_command := 'SELECT sum(C) from '||transcript_name||' T, course_offering O, courses C where T.off_id=O.id and O.course_id=C.course_id and O.year='||prev_year||'and T.grade!=''F'' group by O.year;';								
 			EXECUTE credit_calculate_command into credit_limit;
 
+			if credit_limit is NULL then
+				credit_limit := 0;
+			end if;
 		else
 
-			credit_calculate_command := 'SELECT sum(C) from '||transcript_name||' T, course_offering O, courses C where T.off_id=O.id and O.course_id=C.course_id and O.year='||					curr_year||' and O.semester=1 and T.grade!=''F'' group by O.year;';
+			credit_calculate_command := 'SELECT sum(C) from '||transcript_name||' T, course_offering O, courses C where T.off_id=O.id and O.course_id=C.course_id and O.year='||curr_year||' and O.semester=1 and T.grade!=''F'' group by O.year;';
 			EXECUTE credit_calculate_command into credit_limit;
 
-			credit_calculate_command := 'SELECT sum(C) from '||transcript_name||' T, course_offering O, courses C where T.off_id=O.id and O.course_id=C.course_id and O.year='||				prev_year||' and O.semester=2 and T.grade!=''F'' group by O.year;';
-			EXECUTE credit_calculate_command into prev_sem_credit;
-			credit_limit:= credit_limit+prev_sum_credit;
+			if credit_limit is NULL then 
+				credit_limit := 0;
+			end if;
 
+			credit_calculate_command := 'SELECT sum(C) from '||transcript_name||' T, course_offering O, courses C where T.off_id=O.id and O.course_id=C.course_id and O.year='||prev_year||' and O.semester=2 and T.grade!=''F'' group by O.year;';
+			EXECUTE credit_calculate_command into prev_sem_credit;
+
+			if prev_sem_credit is NULL then
+				prev_sem_credit := 0;
+			end if;
+
+			credit_limit:= credit_limit+prev_sum_credit;
 		end if;
 		credit_limit := 1.25*(credit_limit/2);		
 	end if;
